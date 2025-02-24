@@ -1,10 +1,10 @@
 #![allow(clippy::doc_markdown)]
 #![doc = include_str!("../README.md")]
 
-pub use chia_sdk_client::*;
-pub use chia_sdk_coinset::*;
-pub use chia_sdk_driver::*;
-pub use chia_sdk_signer::*;
-pub use chia_sdk_test::*;
-pub use chia_sdk_types::*;
-pub use chia_sdk_utils::*;
+pub use chik_sdk_client::*;
+pub use chik_sdk_coinset::*;
+pub use chik_sdk_driver::*;
+pub use chik_sdk_signer::*;
+pub use chik_sdk_test::*;
+pub use chik_sdk_types::*;
+pub use chik_sdk_utils::*;

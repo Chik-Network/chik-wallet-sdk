@@ -1,0 +1,62 @@
+[package]
+name = "chik-sdk-driver"
+version = "0.21.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Driver code for interacting with standard puzzles on the Chik blockchain."
+authors = ["Brandon Haggstrom <me@rigidnetwork.com>"]
+homepage = "https://github.com/Rigidity/chik-wallet-sdk"
+repository = "https://github.com/Rigidity/chik-wallet-sdk"
+readme = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+
+[lints]
+workspace = true
+
+[features]
+chip-0035 = ["chik-sdk-types/chip-0035"]
+experimental-vaults = ["chik-sdk-types/experimental-vaults"]
+offers = [
+    "dep:bech32",
+    "dep:chik-traits",
+    "dep:flate2",
+    "dep:indexmap",
+    "dep:once_cell",
+]
+
+[dependencies]
+chik-bls = { workspace = true }
+chik-secp = { workspace = true }
+chik-protocol = { workspace = true }
+chik-puzzles = { workspace = true }
+chik-puzzle-types = { workspace = true }
+chik-sha2 = { workspace = true }
+klvm-traits = { workspace = true }
+klvm-utils = { workspace = true }
+klvmr = { workspace = true }
+thiserror = { workspace = true }
+chik-sdk-types = { workspace = true }
+hex-literal = { workspace = true }
+num-bigint = { workspace = true }
+hex = { workspace = true }
+bigdecimal = { workspace = true }
+bech32 = { workspace = true, optional = true }
+chik-traits = { workspace = true, optional = true }
+flate2 = { workspace = true, features = ["zlib-ng-compat"], optional = true }
+indexmap = { workspace = true, optional = true }
+once_cell = { workspace = true, optional = true }
+
+[dev-dependencies]
+chik-sdk-test = { workspace = true }
+chik-sdk-signer = { workspace = true }
+anyhow = { workspace = true }
+chik-consensus = { workspace = true }
+hex = { workspace = true }
+hex-literal = { workspace = true }
+rstest = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }

@@ -1,6 +1,6 @@
 use crate::{impl_self, Error, FromRust, IntoRust, Result};
-use chia_protocol::{Bytes, BytesImpl, Program};
-use clvm_utils::TreeHash;
+use chik_protocol::{Bytes, BytesImpl, Program};
+use klvm_utils::TreeHash;
 use num_bigint::BigInt;
 
 impl From<Error> for pyo3::PyErr {

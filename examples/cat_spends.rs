@@ -1,6 +1,6 @@
-use chia_sdk_driver::{Cat, CatSpend, SpendContext, SpendWithConditions, StandardLayer};
-use chia_sdk_test::Simulator;
-use chia_sdk_types::Conditions;
+use chik_sdk_driver::{Cat, CatSpend, SpendContext, SpendWithConditions, StandardLayer};
+use chik_sdk_test::Simulator;
+use chik_sdk_types::Conditions;
 
 fn main() -> anyhow::Result<()> {
     let mut sim = Simulator::new();

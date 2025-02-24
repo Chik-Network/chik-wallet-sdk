@@ -7,7 +7,7 @@ use wasm_bindgen::{prelude::wasm_bindgen, JsError};
 bindy_macro::bindy_wasm!("bindings.json");
 
 #[wasm_bindgen]
-impl Clvm {
+impl Klvm {
     #[wasm_bindgen]
     pub fn int(&self, value: f64) -> Result<Program, JsError> {
         Ok(Program::from_rust(self.0.f64(value)?, &WasmContext)?)

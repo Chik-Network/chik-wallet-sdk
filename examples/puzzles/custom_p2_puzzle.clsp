@@ -1,5 +1,5 @@
 (mod (PUBLIC_KEY conditions)
-    ;; https://docs.chia.net/conditions
+    ;; https://docs.chiknetwork.com/conditions
     (defconstant AGG_SIG_ME 50)
 
     ;; This is used to calculate a tree hash of a value (for example a puzzle hash).

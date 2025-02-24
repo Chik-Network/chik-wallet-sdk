@@ -18,11 +18,11 @@ pub use pyo3_impls::*;
 
 use std::string::FromUtf8Error;
 
-use chia_sdk_driver::DriverError;
-use chia_sdk_test::SimulatorError;
-use chia_sdk_utils::AddressError;
-use clvm_traits::{FromClvmError, ToClvmError};
-use clvmr::reduction::EvalErr;
+use chik_sdk_driver::DriverError;
+use chik_sdk_test::SimulatorError;
+use chik_sdk_utils::AddressError;
+use klvm_traits::{FromKlvmError, ToKlvmError};
+use klvmr::reduction::EvalErr;
 
 use num_bigint::{BigInt, ParseBigIntError, TryFromBigIntError};
 use thiserror::Error;
@@ -49,7 +49,7 @@ pub enum Error {
     Hex(#[from] hex::FromHexError),
 
     #[error("Bls error: {0}")]
-    Bls(#[from] chia_bls::Error),
+    Bls(#[from] chik_bls::Error),
 
     #[error("Secp error: {0}")]
     Secp(#[from] signature::Error),
@@ -87,11 +87,11 @@ pub enum Error {
     #[error("Pair expected")]
     PairExpected,
 
-    #[error("To CLVM error: {0}")]
-    ToClvm(#[from] ToClvmError),
+    #[error("To KLVM error: {0}")]
+    ToKlvm(#[from] ToKlvmError),
 
-    #[error("From CLVM error: {0}")]
-    FromClvm(#[from] FromClvmError),
+    #[error("From KLVM error: {0}")]
+    FromKlvm(#[from] FromKlvmError),
 
     #[error("Missing parent inner puzzle hash")]
     MissingParentInnerPuzzleHash,

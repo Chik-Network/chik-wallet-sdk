@@ -1,13 +1,13 @@
-use chia_sdk_utils::Address;
+use chik_sdk_utils::Address;
 use hex_literal::hex;
 
 fn main() -> anyhow::Result<()> {
     let puzzle_hash =
         hex!("aca490e9f3ebcafa3d5342d347db2703b31029511f5b40c11441af1c961f6585").into();
 
-    let address = Address::new(puzzle_hash, "xch".to_string()).encode()?;
+    let address = Address::new(puzzle_hash, "xck".to_string()).encode()?;
 
-    println!("XCH address: {address}");
+    println!("XCK address: {address}");
 
     let roundtrip = Address::decode(&address)?;
     println!(
@@ -15,7 +15,7 @@ fn main() -> anyhow::Result<()> {
         roundtrip
             == Address {
                 puzzle_hash,
-                prefix: "xch".to_string()
+                prefix: "xck".to_string()
             }
     );
 

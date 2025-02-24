@@ -1,10 +1,10 @@
 {
-  "name": "chia-wallet-sdk",
+  "name": "chik-wallet-sdk",
   "version": "0.21.0",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/xch-dev/chia-wallet-sdk"
+    "url": "https://github.com/chik-network/chik-wallet-sdk"
   },
   "main": "index.js",
   "types": "index.d.ts",
@@ -28,7 +28,7 @@
     "update-declarations": "node scripts/update-declarations.js"
   },
   "napi": {
-    "name": "chia-wallet-sdk",
+    "name": "chik-wallet-sdk",
     "triples": {
       "additional": [
         "aarch64-apple-darwin",

@@ -1,13 +1,13 @@
 [package]
 publish = false
-name = "chia-wallet-sdk-wasm"
+name = "chik-wallet-sdk-wasm"
 version = "0.0.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "WASM bindings for the Chia Wallet SDK."
+description = "WASM bindings for the Chik Wallet SDK."
 authors = ["Brandon Haggstrom <me@rigidnetwork.com>"]
-homepage = "https://github.com/Rigidity/chia-wallet-sdk"
-repository = "https://github.com/Rigidity/chia-wallet-sdk"
+homepage = "https://github.com/Rigidity/chik-wallet-sdk"
+repository = "https://github.com/Rigidity/chik-wallet-sdk"
 readme = { workspace = true }
 keywords = { workspace = true }
 categories = { workspace = true }
@@ -21,10 +21,10 @@ crate-type = ["cdylib"]
 [dependencies]
 wasm-bindgen = { workspace = true }
 js-sys = { workspace = true }
-chia-sdk-bindings = { workspace = true, features = ["wasm"] }
+chik-sdk-bindings = { workspace = true, features = ["wasm"] }
 bindy = { workspace = true, features = ["wasm"] }
 bindy-macro = { workspace = true }
 getrandom = { workspace = true, features = ["js"] }
 
 [package.metadata.cargo-machete]
-ignored = ["bindy", "chia-sdk-bindings", "getrandom", "wasm-bindgen"]
+ignored = ["bindy", "chik-sdk-bindings", "getrandom", "wasm-bindgen"]

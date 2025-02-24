@@ -35,7 +35,7 @@ export declare function wrappedDelegatedPuzzleHash(restrictions: Array<Restricti
 export declare class Constants {
   static defaultMetadataUpdaterHash(): Uint8Array
 }
-export declare class Clvm {
+export declare class Klvm {
   constructor()
   addCoinSpend(coinSpend: CoinSpend): void
   spendCoin(coin: Coin, spend: Spend): void

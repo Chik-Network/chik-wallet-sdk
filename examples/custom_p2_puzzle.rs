@@ -1,12 +1,12 @@
-use chia_bls::PublicKey;
-use chia_protocol::{Coin, CoinSpend};
-use chia_sdk_driver::{DriverError, Spend, SpendContext};
-use chia_sdk_test::Simulator;
-use chia_sdk_types::Conditions;
-use clvm_traits::{FromClvm, ToClvm};
-use clvm_utils::{CurriedProgram, ToTreeHash, TreeHash};
-use clvmr::NodePtr;
+use chik_bls::PublicKey;
+use chik_protocol::{Coin, CoinSpend};
+use chik_sdk_driver::{DriverError, Spend, SpendContext};
+use chik_sdk_test::Simulator;
+use chik_sdk_types::Conditions;
 use hex_literal::hex;
+use klvm_traits::{FromKlvm, ToKlvm};
+use klvm_utils::{CurriedProgram, ToTreeHash, TreeHash};
+use klvmr::NodePtr;
 
 // We need to define the puzzle reveal.
 // This can be found in `../puzzles/custom_p2_puzzle.clsp.hex`.
@@ -20,14 +20,14 @@ pub const CUSTOM_P2_PUZZLE: [u8; 137] = hex!(
     "
 );
 
-// The puzzle hash can be calculated with `opc -H "$(opd <puzzle_reveal>)"` with `chia-dev-tools`.
+// The puzzle hash can be calculated with `opc -H "$(opd <puzzle_reveal>)"` with `chik-dev-tools`.
 pub const CUSTOM_P2_PUZZLE_HASH: TreeHash = TreeHash::new(hex!(
     "0ff94726f1a8dea5c3f70d3121945190778d3b2b3fcda3735a1f290977e98341"
 ));
 
 // These are the curried arguments that the puzzle accepts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ToClvm, FromClvm)]
-#[clvm(curry)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ToKlvm, FromKlvm)]
+#[klvm(curry)]
 pub struct CustomArgs {
     pub public_key: PublicKey,
 }
@@ -47,8 +47,8 @@ impl CustomArgs {
 }
 
 // And the solution is just a list of conditions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ToClvm, FromClvm)]
-#[clvm(list)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ToKlvm, FromKlvm)]
+#[klvm(list)]
 pub struct CustomSolution<T> {
     pub conditions: T,
 }

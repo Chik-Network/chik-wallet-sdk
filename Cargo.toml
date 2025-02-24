@@ -1,12 +1,12 @@
 [package]
-name = "chia-wallet-sdk"
+name = "chik-wallet-sdk"
 version = "0.21.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "An unofficial SDK for building Chia wallets."
+description = "An unofficial SDK for building Chik wallets."
 authors = ["Brandon Haggstrom <me@rigidnetwork.com>"]
-homepage = "https://github.com/Rigidity/chia-wallet-sdk"
-repository = "https://github.com/Rigidity/chia-wallet-sdk"
+homepage = "https://github.com/Rigidity/chik-wallet-sdk"
+repository = "https://github.com/Rigidity/chik-wallet-sdk"
 readme = { workspace = true }
 keywords = { workspace = true }
 categories = { workspace = true }
@@ -20,7 +20,7 @@ members = ["crates/*", "napi", "wasm", "pyo3"]
 
 [workspace.package]
 readme = "README.md"
-keywords = ["chia", "wallet", "blockchain", "crypto"]
+keywords = ["chik", "wallet", "blockchain", "crypto"]
 categories = ["cryptography::cryptocurrencies", "development-tools"]
 
 [workspace.lints.rust]
@@ -62,61 +62,61 @@ cargo_common_metadata = "allow"
 workspace = true
 
 [features]
-chip-0035 = ["chia-sdk-driver/chip-0035", "chia-sdk-types/chip-0035"]
+chip-0035 = ["chik-sdk-driver/chip-0035", "chik-sdk-types/chip-0035"]
 experimental-vaults = [
-    "chia-sdk-driver/experimental-vaults",
-    "chia-sdk-types/experimental-vaults",
+    "chik-sdk-driver/experimental-vaults",
+    "chik-sdk-types/experimental-vaults",
 ]
-offers = ["chia-sdk-driver/offers"]
-native-tls = ["chia-sdk-client/native-tls"]
-rustls = ["chia-sdk-client/rustls"]
-peer-simulator = ["chia-sdk-test/peer-simulator"]
+offers = ["chik-sdk-driver/offers"]
+native-tls = ["chik-sdk-client/native-tls"]
+rustls = ["chik-sdk-client/rustls"]
+peer-simulator = ["chik-sdk-test/peer-simulator"]
 
 [dependencies]
-chia-sdk-client = { workspace = true }
-chia-sdk-driver = { workspace = true }
-chia-sdk-signer = { workspace = true }
-chia-sdk-test = { workspace = true }
-chia-sdk-types = { workspace = true }
-chia-sdk-utils = { workspace = true }
-chia-sdk-coinset = { workspace = true }
+chik-sdk-client = { workspace = true }
+chik-sdk-driver = { workspace = true }
+chik-sdk-signer = { workspace = true }
+chik-sdk-test = { workspace = true }
+chik-sdk-types = { workspace = true }
+chik-sdk-utils = { workspace = true }
+chik-sdk-coinset = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
 hex-literal = { workspace = true }
-chia-protocol = { workspace = true }
-chia-puzzle-types = { workspace = true }
-chia-bls = { workspace = true }
-clvm-utils = { workspace = true }
-clvm-traits = { workspace = true, features = ["derive"] }
-clvmr = { workspace = true }
+chik-protocol = { workspace = true }
+chik-puzzle-types = { workspace = true }
+chik-bls = { workspace = true }
+klvm-utils = { workspace = true }
+klvm-traits = { workspace = true, features = ["derive"] }
+klvmr = { workspace = true }
 
 [workspace.dependencies]
-chia-wallet-sdk = { version = "0.21.0", path = "." }
-chia-sdk-client = { version = "0.21.0", path = "./crates/chia-sdk-client" }
-chia-sdk-derive = { version = "0.21.0", path = "./crates/chia-sdk-derive" }
-chia-sdk-driver = { version = "0.21.0", path = "./crates/chia-sdk-driver" }
-chia-sdk-signer = { version = "0.21.0", path = "./crates/chia-sdk-signer" }
-chia-sdk-test = { version = "0.21.0", path = "./crates/chia-sdk-test" }
-chia-sdk-types = { version = "0.21.0", path = "./crates/chia-sdk-types" }
-chia-sdk-utils = { version = "0.21.0", path = "./crates/chia-sdk-utils" }
-chia-sdk-coinset = { version = "0.21.0", path = "./crates/chia-sdk-coinset" }
-chia-sdk-bindings = { version = "0.21.0", path = "./crates/chia-sdk-bindings" }
+chik-wallet-sdk = { version = "0.21.0", path = "." }
+chik-sdk-client = { version = "0.21.0", path = "./crates/chik-sdk-client" }
+chik-sdk-derive = { version = "0.21.0", path = "./crates/chik-sdk-derive" }
+chik-sdk-driver = { version = "0.21.0", path = "./crates/chik-sdk-driver" }
+chik-sdk-signer = { version = "0.21.0", path = "./crates/chik-sdk-signer" }
+chik-sdk-test = { version = "0.21.0", path = "./crates/chik-sdk-test" }
+chik-sdk-types = { version = "0.21.0", path = "./crates/chik-sdk-types" }
+chik-sdk-utils = { version = "0.21.0", path = "./crates/chik-sdk-utils" }
+chik-sdk-coinset = { version = "0.21.0", path = "./crates/chik-sdk-coinset" }
+chik-sdk-bindings = { version = "0.21.0", path = "./crates/chik-sdk-bindings" }
 bindy = { version = "0.21.0", path = "./crates/bindy" }
 bindy-macro = { version = "0.21.0", path = "./crates/bindy-macro" }
-chia = "0.20.0"
-chia-ssl = "0.20.0"
-chia-protocol = "0.20.0"
-chia-consensus = "0.20.0"
-chia-traits = "0.20.0"
-chia-bls = "0.20.0"
-chia-secp = "0.20.0"
-chia-puzzles = "0.20.1"
-chia-puzzle-types = "0.20.0"
-clvm-traits = "0.20.0"
-clvm-utils = "0.20.0"
-chia-sha2 = "0.20.0"
-clvmr = "0.12.0"
+chik = "0.20.0"
+chik-ssl = "0.20.0"
+chik-protocol = "0.20.0"
+chik-consensus = "0.20.0"
+chik-traits = "0.20.0"
+chik-bls = "0.20.0"
+chik-secp = "0.20.0"
+chik-puzzles = "0.20.1"
+chik-puzzle-types = "0.20.0"
+klvm-traits = "0.20.0"
+klvm-utils = "0.20.0"
+chik-sha2 = "0.20.0"
+klvmr = "0.12.0"
 thiserror = "1.0.61"
 hex = "0.4.3"
 bech32 = "0.9.1"

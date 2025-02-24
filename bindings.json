@@ -1,6 +1,6 @@
 {
-  "entrypoint": "chia_sdk_bindings",
-  "pymodule": "chia_wallet_sdk",
+  "entrypoint": "chik_sdk_bindings",
+  "pymodule": "chik_wallet_sdk",
   "bindings": {
     "Constants": {
       "type": "class",
@@ -11,7 +11,7 @@
         }
       }
     },
-    "Clvm": {
+    "Klvm": {
       "type": "class",
       "methods": {
         "new": {

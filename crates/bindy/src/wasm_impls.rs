@@ -1,9 +1,9 @@
 use std::str::FromStr;
 
-use chia_protocol::{Bytes, Bytes32, BytesImpl, Program};
-use clvm_utils::TreeHash;
+use chik_protocol::{Bytes, Bytes32, BytesImpl, Program};
 use js_sys::wasm_bindgen::{JsCast, UnwrapThrowExt};
 use js_sys::Uint8Array;
+use klvm_utils::TreeHash;
 use num_bigint::BigInt;
 
 use crate::{Error, FromRust, IntoRust, Result};

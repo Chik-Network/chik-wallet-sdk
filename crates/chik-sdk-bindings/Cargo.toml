@@ -1,0 +1,42 @@
+[package]
+name = "chik-sdk-bindings"
+version = "0.21.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Underlying implementation of chik-wallet-sdk bindings."
+authors = ["Brandon Haggstrom <me@rigidnetwork.com>"]
+homepage = "https://github.com/Rigidity/chik-wallet-sdk"
+repository = "https://github.com/Rigidity/chik-wallet-sdk"
+readme = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
+
+[lints]
+workspace = true
+
+[features]
+napi = []
+wasm = []
+pyo3 = []
+
+[dependencies]
+chik-sdk-utils = { workspace = true }
+chik-sdk-driver = { workspace = true, features = ["experimental-vaults"] }
+chik-sdk-test = { workspace = true }
+chik-sdk-types = { workspace = true }
+chik-protocol = { workspace = true }
+chik-bls = { workspace = true }
+chik-secp = { workspace = true }
+chik-puzzle-types = { workspace = true }
+chik-puzzles = { workspace = true }
+klvm-utils = { workspace = true }
+klvm-traits = { workspace = true }
+klvmr = { workspace = true }
+bindy = { workspace = true }
+bip39 = { workspace = true }
+hex = { workspace = true }
+sha2 = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+num-bigint = { workspace = true }
+paste = { workspace = true }

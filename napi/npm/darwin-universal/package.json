@@ -1,16 +1,16 @@
 {
-  "name": "chia-wallet-sdk-darwin-universal",
+  "name": "chik-wallet-sdk-darwin-universal",
   "version": "0.21.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/xch-dev/chia-wallet-sdk"
+    "url": "https://github.com/chik-network/chik-wallet-sdk"
   },
   "os": [
     "darwin"
   ],
-  "main": "chia-wallet-sdk.darwin-universal.node",
+  "main": "chik-wallet-sdk.darwin-universal.node",
   "files": [
-    "chia-wallet-sdk.darwin-universal.node"
+    "chik-wallet-sdk.darwin-universal.node"
   ],
   "license": "MIT",
   "engines": {

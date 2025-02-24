@@ -1,13 +1,13 @@
 [package]
 publish = false
-name = "chia-wallet-sdk-napi"
+name = "chik-wallet-sdk-napi"
 version = "0.0.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "Node.js bindings for the Chia Wallet SDK."
+description = "Node.js bindings for the Chik Wallet SDK."
 authors = ["Brandon Haggstrom <me@rigidnetwork.com>"]
-homepage = "https://github.com/Rigidity/chia-wallet-sdk"
-repository = "https://github.com/Rigidity/chia-wallet-sdk"
+homepage = "https://github.com/Rigidity/chik-wallet-sdk"
+repository = "https://github.com/Rigidity/chik-wallet-sdk"
 readme = { workspace = true }
 keywords = { workspace = true }
 categories = { workspace = true }
@@ -21,7 +21,7 @@ crate-type = ["cdylib"]
 [dependencies]
 napi = { workspace = true, features = ["napi6", "async"] }
 napi-derive = { workspace = true }
-chia-sdk-bindings = { workspace = true, features = ["napi"] }
+chik-sdk-bindings = { workspace = true, features = ["napi"] }
 bindy = { workspace = true, features = ["napi"] }
 bindy-macro = { workspace = true }
 
@@ -45,4 +45,4 @@ openssl = { version = "0.10.68", features = ["vendored"] }
 openssl-sys = { version = "0.9.104", features = ["vendored"] }
 
 [package.metadata.cargo-machete]
-ignored = ["bindy", "chia-sdk-bindings", "napi-derive"]
+ignored = ["bindy", "chik-sdk-bindings", "napi-derive"]

@@ -1,7 +1,7 @@
-use chia_protocol::Coin;
-use chia_sdk_driver::{SpendContext, StandardLayer};
-use chia_sdk_test::Simulator;
-use chia_sdk_types::Conditions;
+use chik_protocol::Coin;
+use chik_sdk_driver::{SpendContext, StandardLayer};
+use chik_sdk_test::Simulator;
+use chik_sdk_types::Conditions;
 
 fn main() -> anyhow::Result<()> {
     // Create the simulator server and connect the peer client.

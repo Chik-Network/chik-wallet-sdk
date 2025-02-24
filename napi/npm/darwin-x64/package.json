@@ -1,9 +1,9 @@
 {
-  "name": "chia-wallet-sdk-darwin-x64",
+  "name": "chik-wallet-sdk-darwin-x64",
   "version": "0.21.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/xch-dev/chia-wallet-sdk"
+    "url": "https://github.com/chik-network/chik-wallet-sdk"
   },
   "os": [
     "darwin"
@@ -11,9 +11,9 @@
   "cpu": [
     "x64"
   ],
-  "main": "chia-wallet-sdk.darwin-x64.node",
+  "main": "chik-wallet-sdk.darwin-x64.node",
   "files": [
-    "chia-wallet-sdk.darwin-x64.node"
+    "chik-wallet-sdk.darwin-x64.node"
   ],
   "license": "MIT",
   "engines": {
