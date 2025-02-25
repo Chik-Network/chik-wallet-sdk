@@ -8,7 +8,7 @@ name = "chik_wallet_sdk"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { workspace = true, features = ["num-bigint", "multiple-pymethods"] }
+pyo3 = { workspace = true, features = ["num-bigint", "multiple-pymethods", "abi3-py38"] }
 chik-sdk-bindings = { workspace = true, features = ["pyo3"] }
 bindy = { workspace = true, features = ["pyo3"] }
 bindy-macro = { workspace = true }
