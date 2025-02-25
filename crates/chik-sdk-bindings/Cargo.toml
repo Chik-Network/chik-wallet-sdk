@@ -32,7 +32,7 @@ chik-puzzles = { workspace = true }
 klvm-utils = { workspace = true }
 klvm-traits = { workspace = true }
 klvmr = { workspace = true }
-bindy = { workspace = true }
+binky = { workspace = true }
 bip39 = { workspace = true }
 hex = { workspace = true }
 sha2 = { workspace = true }

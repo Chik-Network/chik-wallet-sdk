@@ -1,10 +1,10 @@
 #![allow(clippy::too_many_arguments)]
 
-use bindy::{FromRust, IntoRust, WasmContext};
+use binky::{FromRust, IntoRust, WasmContext};
 use js_sys::BigInt;
 use wasm_bindgen::{prelude::wasm_bindgen, JsError};
 
-bindy_macro::bindy_wasm!("bindings.json");
+binky_macro::binky_wasm!("bindings.json");
 
 #[wasm_bindgen]
 impl Klvm {

@@ -102,8 +102,8 @@ chik-sdk-types = { version = "0.21.0", path = "./crates/chik-sdk-types" }
 chik-sdk-utils = { version = "0.21.0", path = "./crates/chik-sdk-utils" }
 chik-sdk-coinset = { version = "0.21.0", path = "./crates/chik-sdk-coinset" }
 chik-sdk-bindings = { version = "0.21.0", path = "./crates/chik-sdk-bindings" }
-bindy = { version = "0.21.0", path = "./crates/bindy" }
-bindy-macro = { version = "0.21.0", path = "./crates/bindy-macro" }
+binky = { version = "0.21.0", path = "./crates/binky" }
+binky-macro = { version = "0.21.0", path = "./crates/binky-macro" }
 chik = "0.20.0"
 chik-ssl = "0.20.0"
 chik-protocol = "0.20.0"

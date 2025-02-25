@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use bindy::Result;
+use binky::Result;
 use chik_protocol::Bytes32;
 
 use crate::{BlsPairWithCoin, Coin, CoinSpend, SecretKey};

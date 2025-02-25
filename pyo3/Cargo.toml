@@ -10,9 +10,9 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { workspace = true, features = ["num-bigint", "multiple-pymethods", "abi3-py38"] }
 chik-sdk-bindings = { workspace = true, features = ["pyo3"] }
-bindy = { workspace = true, features = ["pyo3"] }
-bindy-macro = { workspace = true }
+binky = { workspace = true, features = ["pyo3"] }
+binky-macro = { workspace = true }
 num-bigint = { workspace = true }
 
 [package.metadata.cargo-machete]
-ignored = ["bindy", "chik-sdk-bindings", "pyo3"]
+ignored = ["binky", "chik-sdk-bindings", "pyo3"]

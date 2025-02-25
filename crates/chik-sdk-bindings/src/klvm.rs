@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex, RwLock};
 
-use bindy::{Error, Result};
+use binky::{Error, Result};
 use chik_protocol::{Bytes, Bytes32, Program as SerializedProgram};
 use chik_puzzle_types::nft;
 use chik_sdk_driver::{HashedPtr, Launcher, SpendContext, StandardLayer};

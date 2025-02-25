@@ -2,11 +2,11 @@
 #![allow(clippy::wildcard_imports)]
 #![allow(clippy::too_many_arguments)]
 
-use bindy::{FromRust, IntoRust, NapiParamContext, NapiReturnContext};
+use binky::{FromRust, IntoRust, NapiParamContext, NapiReturnContext};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-bindy_macro::bindy_napi!("bindings.json");
+binky_macro::binky_napi!("bindings.json");
 
 #[napi]
 impl Klvm {
@@ -115,7 +115,7 @@ fn alloc(
     env: Env,
     klvm: &chik_sdk_bindings::Klvm,
     value: Value,
-) -> bindy::Result<chik_sdk_bindings::Program> {
+) -> binky::Result<chik_sdk_bindings::Program> {
     match value {
         Value::A(value) => klvm.f64(value),
         Value::B(value) => klvm.big_int(value.into_rust(&NapiParamContext)?),

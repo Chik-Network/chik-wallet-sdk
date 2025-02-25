@@ -1,4 +1,4 @@
-use bindy::Result;
+use binky::Result;
 use chik_puzzles::NFT_METADATA_UPDATER_DEFAULT_HASH;
 use klvm_utils::TreeHash;
 

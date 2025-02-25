@@ -1,4 +1,4 @@
-use bindy::Error;
+use binky::Error;
 use chik_protocol::Bytes32;
 use chik_puzzle_types::{EveProof, Proof};
 

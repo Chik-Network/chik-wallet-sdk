@@ -1,4 +1,4 @@
-use bindy::Result;
+use binky::Result;
 use chik_protocol::Bytes32;
 use chik_sdk_driver::{CurriedPuzzle, HashedPtr, RawPuzzle};
 

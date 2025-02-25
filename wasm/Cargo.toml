@@ -22,9 +22,9 @@ crate-type = ["cdylib"]
 wasm-bindgen = { workspace = true }
 js-sys = { workspace = true }
 chik-sdk-bindings = { workspace = true, features = ["wasm"] }
-bindy = { workspace = true, features = ["wasm"] }
-bindy-macro = { workspace = true }
+binky = { workspace = true, features = ["wasm"] }
+binky-macro = { workspace = true }
 getrandom = { workspace = true, features = ["js"] }
 
 [package.metadata.cargo-machete]
-ignored = ["bindy", "chik-sdk-bindings", "getrandom", "wasm-bindgen"]
+ignored = ["binky", "chik-sdk-bindings", "getrandom", "wasm-bindgen"]

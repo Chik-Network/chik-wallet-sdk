@@ -1,4 +1,4 @@
-use bindy::Result;
+use binky::Result;
 use chik_protocol::Bytes32;
 
 use crate::{Coin, K1PublicKey, K1SecretKey, PublicKey, R1PublicKey, R1SecretKey, SecretKey};

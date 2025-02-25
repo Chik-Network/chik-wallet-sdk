@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex, RwLock};
 
-use bindy::Result;
+use binky::Result;
 use chik_protocol::{Bytes, Bytes32};
 use chik_sdk_driver::{self as sdk, member_puzzle_hash, MemberSpend, MofN, SpendContext};
 use chik_sdk_types::{

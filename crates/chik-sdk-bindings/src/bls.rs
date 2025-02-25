@@ -1,4 +1,4 @@
-use bindy::Result;
+use binky::Result;
 use chik_bls::{
     sign, DerivableKey, PublicKey as PublicKeyRs, SecretKey as SecretKeyRs,
     Signature as SignatureRs,

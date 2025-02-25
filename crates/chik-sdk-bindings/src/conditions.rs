@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use bindy::Result;
+use binky::Result;
 use chik_bls as bls;
 use chik_protocol::{Bytes, Bytes32};
 use chik_sdk_driver::SpendContext;
