@@ -56,10 +56,12 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v4
         if: ${{ !matrix.settings.docker }}
+        env:
+          PNPM_HOME: ${{ github.workspace }}/.pnpm-store  # 绑定到工作区
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: ${{ github.workspace }}/napi/pnpm-lock.yaml
+          cache-dependency-path: napi/pnpm-lock.yaml
 
       - name: Install
         uses: dtolnay/rust-toolchain@stable
