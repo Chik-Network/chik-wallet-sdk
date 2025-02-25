@@ -7,7 +7,7 @@
 
 This is an unofficial wallet SDK for the [Chik blockchain](https://chiknetwork.com), enabling the development of high-performance wallet applications built with Chik's [light wallet protocol](https://docs.chiknetwork.com/wallet-protocol).
 
-![image](https://github.com/Rigidity/chik-wallet-sdk/assets/35380458/06dd1f97-1f0e-4f6d-98cb-cbcb2b47ee70)
+![image](https://github.com/Chik-Network/chik-wallet-sdk/assets/35380458/06dd1f97-1f0e-4f6d-98cb-cbcb2b47ee70)
 
 ## Why do you need an SDK?
 

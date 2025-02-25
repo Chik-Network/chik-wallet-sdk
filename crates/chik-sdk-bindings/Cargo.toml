@@ -5,8 +5,8 @@ edition = "2021"
 license = "Apache-2.0"
 description = "Underlying implementation of chik-wallet-sdk bindings."
 authors = ["Brandon Haggstrom <me@rigidnetwork.com>"]
-homepage = "https://github.com/Rigidity/chik-wallet-sdk"
-repository = "https://github.com/Rigidity/chik-wallet-sdk"
+homepage = "https://github.com/Chik-Network/chik-wallet-sdk"
+repository = "https://github.com/Chik-Network/chik-wallet-sdk"
 readme = { workspace = true }
 keywords = { workspace = true }
 categories = { workspace = true }
