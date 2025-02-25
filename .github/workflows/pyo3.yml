@@ -8,8 +8,8 @@ name: Python
 on:
   push:
     branches:
-      - main
-      - master
+      - main1
+      - master1
     tags:
       - "*"
   pull_request:
