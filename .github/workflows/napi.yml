@@ -59,7 +59,7 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: napi/pnpm-lock.yaml
+          cache-dependency-path: ${{ github.workspace }}/napi/pnpm-lock.yaml
 
       - name: Install
         uses: dtolnay/rust-toolchain@stable
