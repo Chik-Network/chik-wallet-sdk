@@ -1,5 +1,5 @@
 use chik_protocol::{Bytes32, SpendBundle};
-use chik_puzzle_types::offer::SettlementPaymentsSolution;
+use chik_puzzles::offer::SettlementPaymentsSolution;
 use chik_traits::Streamable;
 use indexmap::IndexMap;
 use klvm_traits::{FromKlvm, ToKlvm};

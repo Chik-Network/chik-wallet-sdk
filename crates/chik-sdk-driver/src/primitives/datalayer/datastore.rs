@@ -1,10 +1,11 @@
 use chik_protocol::{Bytes, Bytes32, Coin, CoinSpend};
-use chik_puzzle_types::{
-    nft::{NftStateLayerArgs, NftStateLayerSolution},
-    singleton::{LauncherSolution, SingletonArgs, SingletonSolution},
+use chik_puzzles::{
+    nft::{NftStateLayerArgs, NftStateLayerSolution, NFT_STATE_LAYER_PUZZLE_HASH},
+    singleton::{
+        LauncherSolution, SingletonArgs, SingletonSolution, SINGLETON_LAUNCHER_PUZZLE_HASH,
+    },
     EveProof, LineageProof, Proof,
 };
-use chik_puzzles::{NFT_STATE_LAYER_HASH, SINGLETON_LAUNCHER_HASH};
 use chik_sdk_types::{
     run_puzzle, CreateCoin, DelegationLayerArgs, DelegationLayerSolution, NewMetadataInfo,
     NewMetadataOutput, DELEGATION_LAYER_PUZZLE_HASH, DL_METADATA_UPDATER_PUZZLE_HASH,
@@ -221,7 +222,7 @@ where
             .to_klvm(allocator)
             .map_err(DriverError::ToKlvm)?;
 
-        if cs.coin.puzzle_hash == SINGLETON_LAUNCHER_HASH.into() {
+        if cs.coin.puzzle_hash == SINGLETON_LAUNCHER_PUZZLE_HASH.into() {
             // we're just launching this singleton :)
             // solution is (singleton_full_puzzle_hash amount key_value_list)
             // kv_list is (metadata state_layer_hash)
@@ -355,9 +356,9 @@ where
         let new_puzzle_hash = SingletonArgs::curry_tree_hash(
             singleton_layer.launcher_id,
             CurriedProgram {
-                program: TreeHash::new(NFT_STATE_LAYER_HASH),
+                program: NFT_STATE_LAYER_PUZZLE_HASH,
                 args: NftStateLayerArgs::<TreeHash, TreeHash> {
-                    mod_hash: NFT_STATE_LAYER_HASH.into(),
+                    mod_hash: NFT_STATE_LAYER_PUZZLE_HASH.into(),
                     metadata: tree_hash(allocator, new_metadata_ptr),
                     metadata_updater_puzzle_hash: state_layer.metadata_updater_puzzle_hash,
                     inner_puzzle: inner_create_coin_condition.puzzle_hash.into(),
@@ -592,11 +593,11 @@ impl<M> DataStore<M> {
 pub mod tests {
     use core::panic;
 
-    use chik_bls::PublicKey;
-    use chik_puzzle_types::standard::StandardArgs;
-    use chik_sdk_test::{BlsPair, Simulator};
+    use chik_bls::{PublicKey, SecretKey};
+    use chik_puzzles::standard::StandardArgs;
+    use chik_sdk_test::{test_secret_keys, Simulator};
     use chik_sdk_types::{Conditions, MeltSingleton, Memos, UpdateDataStoreMerkleRoot};
-    use chik_sha2::Sha256;
+    use klvmr::sha2::Sha256;
     use rstest::rstest;
 
     use crate::{
@@ -684,18 +685,22 @@ pub mod tests {
     fn test_simple_datastore() -> anyhow::Result<()> {
         let mut sim = Simulator::new();
 
-        let alice = sim.bls(1);
-        let alice_p2 = StandardLayer::new(alice.pk);
+        let [sk]: [SecretKey; 1] = test_secret_keys(1)?.try_into().unwrap();
+        let pk = sk.public_key();
+        let p2 = StandardLayer::new(pk);
+
+        let puzzle_hash = StandardArgs::curry_tree_hash(pk).into();
+        let coin = sim.new_coin(puzzle_hash, 1);
 
         let ctx = &mut SpendContext::new();
 
-        let (launch_singleton, datastore) = Launcher::new(alice.coin.coin_id(), 1).mint_datastore(
+        let (launch_singleton, datastore) = Launcher::new(coin.coin_id(), 1).mint_datastore(
             ctx,
             DataStoreMetadata::root_hash_only(RootHash::Zero.value()),
-            alice.puzzle_hash.into(),
+            puzzle_hash.into(),
             vec![],
         )?;
-        alice_p2.spend(ctx, alice.coin, launch_singleton)?;
+        p2.spend(ctx, coin, launch_singleton)?;
 
         let spends = ctx.take();
         for spend in spends {
@@ -709,17 +714,15 @@ pub mod tests {
             ctx.insert(spend);
         }
 
-        let datastore_inner_spend = alice_p2.spend_with_conditions(
-            ctx,
-            Conditions::new().create_coin(alice.puzzle_hash, 1, None),
-        )?;
+        let datastore_inner_spend = StandardLayer::new(pk)
+            .spend_with_conditions(ctx, Conditions::new().create_coin(puzzle_hash, 1, None))?;
 
         let old_datastore_coin = datastore.coin;
         let new_spend = datastore.spend(ctx, datastore_inner_spend)?;
 
         ctx.insert(new_spend);
 
-        sim.spend_coins(ctx.take(), &[alice.sk])?;
+        sim.spend_coins(ctx.take(), &[sk])?;
 
         // Make sure the datastore was created.
         let coin_state = sim
@@ -736,20 +739,25 @@ pub mod tests {
     fn test_datastore_with_delegation_layer() -> anyhow::Result<()> {
         let mut sim = Simulator::new();
 
-        let [owner, admin, writer] = BlsPair::range();
+        let [owner_sk, admin_sk, writer_sk]: [SecretKey; 3] =
+            test_secret_keys(3)?.try_into().unwrap();
+
+        let owner_pk = owner_sk.public_key();
+        let admin_pk = admin_sk.public_key();
+        let writer_pk = writer_sk.public_key();
 
         let oracle_puzzle_hash: Bytes32 = [1; 32].into();
         let oracle_fee = 1000;
 
-        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner.pk).into();
+        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner_pk).into();
         let coin = sim.new_coin(owner_puzzle_hash, 1);
 
         let ctx = &mut SpendContext::new();
 
-        let admin_puzzle = ctx.curry(StandardArgs::new(admin.pk))?;
+        let admin_puzzle = ctx.curry(StandardArgs::new(admin_pk))?;
         let admin_puzzle_hash = tree_hash(&ctx.allocator, admin_puzzle);
 
-        let writer_inner_puzzle = ctx.curry(StandardArgs::new(writer.pk))?;
+        let writer_inner_puzzle = ctx.curry(StandardArgs::new(writer_pk))?;
         let writer_inner_puzzle_hash = tree_hash(&ctx.allocator, writer_inner_puzzle);
 
         let admin_delegated_puzzle = DelegatedPuzzle::Admin(admin_puzzle_hash);
@@ -767,7 +775,7 @@ pub mod tests {
                 oracle_delegated_puzzle,
             ],
         )?;
-        StandardLayer::new(owner.pk).spend(ctx, coin, launch_singleton)?;
+        StandardLayer::new(owner_pk).spend(ctx, coin, launch_singleton)?;
 
         let spends = ctx.take();
         for spend in spends {
@@ -793,7 +801,7 @@ pub mod tests {
 
         let new_metadata_condition = DataStore::new_metadata_condition(ctx, new_metadata.clone())?;
 
-        let inner_spend = WriterLayer::new(StandardLayer::new(writer.pk))
+        let inner_spend = WriterLayer::new(StandardLayer::new(writer_pk))
             .spend(ctx, Conditions::new().with(new_metadata_condition))?;
         let new_spend = datastore.clone().spend(ctx, inner_spend)?;
 
@@ -822,7 +830,7 @@ pub mod tests {
         }
         .to_klvm(&mut ctx.allocator)?;
 
-        let inner_spend = StandardLayer::new(admin.pk).spend_with_conditions(
+        let inner_spend = StandardLayer::new(admin_pk).spend_with_conditions(
             ctx,
             Conditions::new().with(Condition::Other(new_merkle_root_condition)),
         )?;
@@ -864,14 +872,14 @@ pub mod tests {
         hasher.update(datastore.coin.puzzle_hash);
         hasher.update(Bytes::new("$".into()).to_vec());
 
-        StandardLayer::new(owner.pk).spend(
+        StandardLayer::new(owner_pk).spend(
             ctx,
             new_coin,
             Conditions::new().assert_puzzle_announcement(Bytes32::new(hasher.finalize())),
         )?;
 
         // finally, remove delegation layer altogether
-        let owner_layer = StandardLayer::new(owner.pk);
+        let owner_layer = StandardLayer::new(owner_pk);
         let output_condition = DataStore::<DataStoreMetadata>::owner_create_coin_condition(
             ctx,
             datastore.info.launcher_id,
@@ -893,7 +901,7 @@ pub mod tests {
         assert!(new_datastore.info.delegated_puzzles.is_empty());
         assert_eq!(new_datastore.info.owner_puzzle_hash, owner_puzzle_hash);
 
-        sim.spend_coins(ctx.take(), &[owner.sk, admin.sk, writer.sk])?;
+        sim.spend_coins(ctx.take(), &[owner_sk, admin_sk, writer_sk])?;
 
         // Make sure the datastore was created.
         let coin_state = sim
@@ -955,22 +963,28 @@ pub mod tests {
     ) -> anyhow::Result<()> {
         let mut sim = Simulator::new();
 
-        let [owner, admin, admin2, writer] = BlsPair::range();
+        let [owner_sk, admin_sk, admin2_sk, writer_sk]: [SecretKey; 4] =
+            test_secret_keys(4)?.try_into().unwrap();
+
+        let owner_pk = owner_sk.public_key();
+        let admin_pk = admin_sk.public_key();
+        let admin2_pk = admin2_sk.public_key();
+        let writer_pk = writer_sk.public_key();
 
         let oracle_puzzle_hash: Bytes32 = [7; 32].into();
         let oracle_fee = 1000;
 
-        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner.pk).into();
+        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner_pk).into();
         let coin = sim.new_coin(owner_puzzle_hash, 1);
 
         let ctx = &mut SpendContext::new();
 
         let admin_delegated_puzzle =
-            DelegatedPuzzle::Admin(StandardArgs::curry_tree_hash(admin.pk));
+            DelegatedPuzzle::Admin(StandardArgs::curry_tree_hash(admin_pk));
         let admin2_delegated_puzzle =
-            DelegatedPuzzle::Admin(StandardArgs::curry_tree_hash(admin2.pk));
+            DelegatedPuzzle::Admin(StandardArgs::curry_tree_hash(admin2_pk));
         let writer_delegated_puzzle =
-            DelegatedPuzzle::Writer(StandardArgs::curry_tree_hash(writer.pk));
+            DelegatedPuzzle::Writer(StandardArgs::curry_tree_hash(writer_pk));
         let oracle_delegated_puzzle = DelegatedPuzzle::Oracle(oracle_puzzle_hash, oracle_fee);
 
         let mut src_delegated_puzzles: Vec<DelegatedPuzzle> = vec![];
@@ -989,7 +1003,7 @@ pub mod tests {
             src_delegated_puzzles.clone(),
         )?;
 
-        StandardLayer::new(owner.pk).spend(ctx, coin, launch_singleton)?;
+        StandardLayer::new(owner_pk).spend(ctx, coin, launch_singleton)?;
 
         // transition from src to dst
         let mut admin_inner_output = Conditions::new();
@@ -1043,7 +1057,7 @@ pub mod tests {
 
         // delegated puzzle info + inner puzzle reveal + solution
         let inner_datastore_spend =
-            StandardLayer::new(admin.pk).spend_with_conditions(ctx, admin_inner_output)?;
+            StandardLayer::new(admin_pk).spend_with_conditions(ctx, admin_inner_output)?;
         let src_datastore_coin = src_datastore.coin;
         let new_spend = src_datastore.clone().spend(ctx, inner_datastore_spend)?;
 
@@ -1092,7 +1106,7 @@ pub mod tests {
             ],
         );
 
-        sim.spend_coins(ctx.take(), &[owner.sk, admin.sk, writer.sk])?;
+        sim.spend_coins(ctx.take(), &[owner_sk, admin_sk, writer_sk])?;
 
         let src_coin_state = sim
             .coin_state(src_datastore_coin.coin_id())
@@ -1140,23 +1154,29 @@ pub mod tests {
     ) -> anyhow::Result<()> {
         let mut sim = Simulator::new();
 
-        let [owner, owner2, admin, writer] = BlsPair::range();
+        let [owner_sk, owner2_sk, admin_sk, writer_sk]: [SecretKey; 4] =
+            test_secret_keys(4)?.try_into().unwrap();
+
+        let owner_pk = owner_sk.public_key();
+        let owner2_pk = owner2_sk.public_key();
+        let admin_pk = admin_sk.public_key();
+        let writer_pk = writer_sk.public_key();
 
         let oracle_puzzle_hash: Bytes32 = [7; 32].into();
         let oracle_fee = 1000;
 
-        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner.pk).into();
+        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner_pk).into();
         let coin = sim.new_coin(owner_puzzle_hash, 1);
 
-        let owner2_puzzle_hash = StandardArgs::curry_tree_hash(owner2.pk).into();
+        let owner2_puzzle_hash = StandardArgs::curry_tree_hash(owner2_pk).into();
         assert_ne!(owner_puzzle_hash, owner2_puzzle_hash);
 
         let ctx = &mut SpendContext::new();
 
         let admin_delegated_puzzle =
-            DelegatedPuzzle::Admin(StandardArgs::curry_tree_hash(admin.pk));
+            DelegatedPuzzle::Admin(StandardArgs::curry_tree_hash(admin_pk));
         let writer_delegated_puzzle =
-            DelegatedPuzzle::Writer(StandardArgs::curry_tree_hash(writer.pk));
+            DelegatedPuzzle::Writer(StandardArgs::curry_tree_hash(writer_pk));
         let oracle_delegated_puzzle = DelegatedPuzzle::Oracle(oracle_puzzle_hash, oracle_fee);
 
         let mut src_delegated_puzzles: Vec<DelegatedPuzzle> = vec![];
@@ -1176,7 +1196,7 @@ pub mod tests {
             owner_puzzle_hash.into(),
             src_delegated_puzzles.clone(),
         )?;
-        StandardLayer::new(owner.pk).spend(ctx, coin, launch_singleton)?;
+        StandardLayer::new(owner_pk).spend(ctx, coin, launch_singleton)?;
 
         // transition from src to dst using owner puzzle
         let mut owner_output_conds = Conditions::new();
@@ -1224,7 +1244,7 @@ pub mod tests {
 
         // delegated puzzle info + inner puzzle reveal + solution
         let inner_datastore_spend =
-            StandardLayer::new(owner.pk).spend_with_conditions(ctx, owner_output_conds)?;
+            StandardLayer::new(owner_pk).spend_with_conditions(ctx, owner_output_conds)?;
         let new_spend = src_datastore.clone().spend(ctx, inner_datastore_spend)?;
 
         let dst_datastore = DataStore::<DataStoreMetadata>::from_spend(
@@ -1273,7 +1293,7 @@ pub mod tests {
             &[dst_with_admin, dst_with_writer, dst_with_oracle],
         );
 
-        sim.spend_coins(ctx.take(), &[owner.sk, admin.sk, writer.sk])?;
+        sim.spend_coins(ctx.take(), &[owner_sk, admin_sk, writer_sk])?;
 
         let src_coin_state = sim
             .coin_state(src_datastore.coin.coin_id())
@@ -1331,20 +1351,25 @@ pub mod tests {
     ) -> anyhow::Result<()> {
         let mut sim = Simulator::new();
 
-        let [owner, admin, writer] = BlsPair::range();
+        let [owner_sk, admin_sk, writer_sk]: [SecretKey; 3] =
+            test_secret_keys(3)?.try_into().unwrap();
+
+        let owner_pk = owner_sk.public_key();
+        let admin_pk = admin_sk.public_key();
+        let writer_pk = writer_sk.public_key();
 
         let oracle_puzzle_hash: Bytes32 = [7; 32].into();
         let oracle_fee = 1000;
 
-        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner.pk).into();
+        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner_pk).into();
         let coin = sim.new_coin(owner_puzzle_hash, 1);
 
         let ctx = &mut SpendContext::new();
 
         let admin_delegated_puzzle =
-            DelegatedPuzzle::Admin(StandardArgs::curry_tree_hash(admin.pk));
+            DelegatedPuzzle::Admin(StandardArgs::curry_tree_hash(admin_pk));
         let writer_delegated_puzzle =
-            DelegatedPuzzle::Writer(StandardArgs::curry_tree_hash(writer.pk));
+            DelegatedPuzzle::Writer(StandardArgs::curry_tree_hash(writer_pk));
         let oracle_delegated_puzzle = DelegatedPuzzle::Oracle(oracle_puzzle_hash, oracle_fee);
 
         let mut delegated_puzzles: Vec<DelegatedPuzzle> = vec![];
@@ -1363,13 +1388,13 @@ pub mod tests {
             delegated_puzzles.clone(),
         )?;
 
-        StandardLayer::new(owner.pk).spend(ctx, coin, launch_singleton)?;
+        StandardLayer::new(owner_pk).spend(ctx, coin, launch_singleton)?;
 
         // transition from src to dst using writer (update metadata)
         let new_metadata = metadata_from_tuple(meta_transition.1);
         let new_metadata_condition = DataStore::new_metadata_condition(ctx, new_metadata)?;
 
-        let inner_spend = WriterLayer::new(StandardLayer::new(writer.pk))
+        let inner_spend = WriterLayer::new(StandardLayer::new(writer_pk))
             .spend(ctx, Conditions::new().with(new_metadata_condition))?;
 
         let new_spend = src_datastore.clone().spend(ctx, inner_spend)?;
@@ -1418,7 +1443,7 @@ pub mod tests {
             &[with_admin_layer, true, with_oracle_layer],
         );
 
-        sim.spend_coins(ctx.take(), &[owner.sk, admin.sk, writer.sk])?;
+        sim.spend_coins(ctx.take(), &[owner_sk, admin_sk, writer_sk])?;
 
         let src_coin_state = sim
             .coin_state(src_datastore.coin.coin_id())
@@ -1452,22 +1477,28 @@ pub mod tests {
     ) -> anyhow::Result<()> {
         let mut sim = Simulator::new();
 
-        let [owner, admin, writer, dude] = BlsPair::range();
+        let [owner_sk, admin_sk, writer_sk, dude_sk]: [SecretKey; 4] =
+            test_secret_keys(4)?.try_into().unwrap();
+
+        let owner_pk = owner_sk.public_key();
+        let admin_pk = admin_sk.public_key();
+        let writer_pk = writer_sk.public_key();
+        let dude_pk = dude_sk.public_key();
 
         let oracle_puzzle_hash: Bytes32 = [7; 32].into();
         let oracle_fee = 1000;
 
-        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner.pk).into();
+        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner_pk).into();
         let coin = sim.new_coin(owner_puzzle_hash, 1);
 
-        let dude_puzzle_hash = StandardArgs::curry_tree_hash(dude.pk).into();
+        let dude_puzzle_hash = StandardArgs::curry_tree_hash(dude_pk).into();
 
         let ctx = &mut SpendContext::new();
 
         let admin_delegated_puzzle =
-            DelegatedPuzzle::Admin(StandardArgs::curry_tree_hash(admin.pk));
+            DelegatedPuzzle::Admin(StandardArgs::curry_tree_hash(admin_pk));
         let writer_delegated_puzzle =
-            DelegatedPuzzle::Writer(StandardArgs::curry_tree_hash(writer.pk));
+            DelegatedPuzzle::Writer(StandardArgs::curry_tree_hash(writer_pk));
         let oracle_delegated_puzzle = DelegatedPuzzle::Oracle(oracle_puzzle_hash, oracle_fee);
 
         let mut delegated_puzzles: Vec<DelegatedPuzzle> = vec![];
@@ -1487,7 +1518,7 @@ pub mod tests {
             delegated_puzzles.clone(),
         )?;
 
-        StandardLayer::new(owner.pk).spend(ctx, coin, launch_singleton)?;
+        StandardLayer::new(owner_pk).spend(ctx, coin, launch_singleton)?;
 
         // 'dude' spends oracle
         let inner_datastore_spend = OracleLayer::new(oracle_puzzle_hash, oracle_fee)
@@ -1511,7 +1542,7 @@ pub mod tests {
         hasher.update(Bytes::new("$".into()).to_vec());
 
         let new_coin = sim.new_coin(dude_puzzle_hash, oracle_fee);
-        StandardLayer::new(dude.pk).spend(
+        StandardLayer::new(dude_pk).spend(
             ctx,
             new_coin,
             Conditions::new().assert_puzzle_announcement(Bytes32::new(hasher.finalize())),
@@ -1549,7 +1580,7 @@ pub mod tests {
             &[with_admin_layer, with_writer_layer, true],
         );
 
-        sim.spend_coins(ctx.take(), &[owner.sk, dude.sk])?;
+        sim.spend_coins(ctx.take(), &[owner_sk, dude_sk])?;
 
         let src_datastore_coin_id = src_datastore.coin.coin_id();
         let src_coin_state = sim
@@ -1591,20 +1622,25 @@ pub mod tests {
     ) -> anyhow::Result<()> {
         let mut sim = Simulator::new();
 
-        let [owner, admin, writer] = BlsPair::range();
+        let [owner_sk, admin_sk, writer_sk]: [SecretKey; 3] =
+            test_secret_keys(3)?.try_into().unwrap();
+
+        let owner_pk = owner_sk.public_key();
+        let admin_pk = admin_sk.public_key();
+        let writer_pk = writer_sk.public_key();
 
         let oracle_puzzle_hash: Bytes32 = [7; 32].into();
         let oracle_fee = 1000;
 
-        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner.pk).into();
+        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner_pk).into();
         let coin = sim.new_coin(owner_puzzle_hash, 1);
 
         let ctx = &mut SpendContext::new();
 
         let admin_delegated_puzzle =
-            DelegatedPuzzle::Admin(StandardArgs::curry_tree_hash(admin.pk));
+            DelegatedPuzzle::Admin(StandardArgs::curry_tree_hash(admin_pk));
         let writer_delegated_puzzle =
-            DelegatedPuzzle::Writer(StandardArgs::curry_tree_hash(writer.pk));
+            DelegatedPuzzle::Writer(StandardArgs::curry_tree_hash(writer_pk));
         let oracle_delegated_puzzle = DelegatedPuzzle::Oracle(oracle_puzzle_hash, oracle_fee);
 
         let mut delegated_puzzles: Vec<DelegatedPuzzle> = vec![];
@@ -1625,14 +1661,14 @@ pub mod tests {
             delegated_puzzles.clone(),
         )?;
 
-        StandardLayer::new(owner.pk).spend(ctx, coin, launch_singleton)?;
+        StandardLayer::new(owner_pk).spend(ctx, coin, launch_singleton)?;
 
         // owner melts
         let output_conds = Conditions::new().with(Condition::Other(
             MeltSingleton {}.to_klvm(&mut ctx.allocator)?,
         ));
         let inner_datastore_spend =
-            StandardLayer::new(owner.pk).spend_with_conditions(ctx, output_conds)?;
+            StandardLayer::new(owner_pk).spend_with_conditions(ctx, output_conds)?;
 
         let new_spend = src_datastore.clone().spend(ctx, inner_datastore_spend)?;
         ctx.insert(new_spend);
@@ -1653,7 +1689,7 @@ pub mod tests {
             &[with_admin_layer, with_writer_layer, with_oracle_layer],
         );
 
-        sim.spend_coins(ctx.take(), &[owner.sk])?;
+        sim.spend_coins(ctx.take(), &[owner_sk])?;
 
         let src_coin_state = sim
             .coin_state(src_datastore.coin.coin_id())
@@ -1695,13 +1731,13 @@ pub mod tests {
     fn test_create_coin_filer(puzzle: AttackerPuzzle) -> anyhow::Result<()> {
         let mut sim = Simulator::new();
 
-        let [owner, attacker] = BlsPair::range();
+        let [owner_sk, attacker_sk]: [SecretKey; 2] = test_secret_keys(2)?.try_into().unwrap();
 
-        let owner_pk = owner.pk;
-        let attacker_pk = attacker.pk;
+        let owner_pk = owner_sk.public_key();
+        let attacker_pk = attacker_sk.public_key();
 
-        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner.pk).into();
-        let attacker_puzzle_hash = StandardArgs::curry_tree_hash(attacker.pk);
+        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner_pk).into();
+        let attacker_puzzle_hash = StandardArgs::curry_tree_hash(attacker_pk);
         let coin = sim.new_coin(owner_puzzle_hash, 1);
 
         let ctx = &mut SpendContext::new();
@@ -1755,12 +1791,15 @@ pub mod tests {
     fn test_melt_filter(puzzle: AttackerPuzzle) -> anyhow::Result<()> {
         let mut sim = Simulator::new();
 
-        let [owner, attacker] = BlsPair::range();
+        let [owner_sk, attacker_sk]: [SecretKey; 2] = test_secret_keys(2)?.try_into().unwrap();
 
-        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner.pk).into();
+        let owner_pk = owner_sk.public_key();
+        let attacker_pk = attacker_sk.public_key();
+
+        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner_pk).into();
         let coin = sim.new_coin(owner_puzzle_hash, 1);
 
-        let attacker_puzzle_hash = StandardArgs::curry_tree_hash(attacker.pk);
+        let attacker_puzzle_hash = StandardArgs::curry_tree_hash(attacker_pk);
 
         let ctx = &mut SpendContext::new();
 
@@ -1776,13 +1815,13 @@ pub mod tests {
             vec![delegated_puzzle],
         )?;
 
-        StandardLayer::new(owner.pk).spend(ctx, coin, launch_singleton)?;
+        StandardLayer::new(owner_pk).spend(ctx, coin, launch_singleton)?;
 
         // attacker tries to melt the coin via delegated puzzle
         let conds = Conditions::new().with(Condition::Other(
             MeltSingleton {}.to_klvm(&mut ctx.allocator)?,
         ));
-        let inner_datastore_spend = puzzle.get_spend(ctx, attacker.pk, conds)?;
+        let inner_datastore_spend = puzzle.get_spend(ctx, attacker_pk, conds)?;
 
         let new_spend = src_datastore.spend(ctx, inner_datastore_spend)?;
 
@@ -1810,7 +1849,9 @@ pub mod tests {
         new_merkle_root: RootHash,
         memos: Vec<RootHash>,
     ) -> anyhow::Result<()> {
-        let attacker = BlsPair::default();
+        let [attacker_sk]: [SecretKey; 1] = test_secret_keys(1)?.try_into().unwrap();
+
+        let attacker_pk = attacker_sk.public_key();
 
         let ctx = &mut SpendContext::new();
 
@@ -1822,7 +1863,7 @@ pub mod tests {
             .to_klvm(&mut ctx.allocator)?,
         ));
 
-        let spend = test_puzzle.get_spend(ctx, attacker.pk, condition_output)?;
+        let spend = test_puzzle.get_spend(ctx, attacker_pk, condition_output)?;
 
         match ctx.run(spend.puzzle, spend.solution) {
             Ok(_) => match test_puzzle {
@@ -1857,7 +1898,9 @@ pub mod tests {
         let should_error_out =
             output_conditions || new_updater_ph != DL_METADATA_UPDATER_PUZZLE_HASH;
 
-        let attacker = BlsPair::default();
+        let [attacker_sk]: [SecretKey; 1] = test_secret_keys(1)?.try_into().unwrap();
+
+        let attacker_pk = attacker_sk.public_key();
 
         let ctx = &mut SpendContext::new();
 
@@ -1885,18 +1928,18 @@ pub mod tests {
 
         let inner_spend = puzzle.get_spend(
             ctx,
-            attacker.pk,
+            attacker_pk,
             Conditions::new().with(new_metadata_condition),
         )?;
 
         let delegated_puzzles = match puzzle {
             AttackerPuzzle::Admin => {
                 vec![DelegatedPuzzle::Admin(StandardArgs::curry_tree_hash(
-                    attacker.pk,
+                    attacker_pk,
                 ))]
             }
             AttackerPuzzle::Writer => vec![DelegatedPuzzle::Writer(StandardArgs::curry_tree_hash(
-                attacker.pk,
+                attacker_pk,
             ))],
         };
         let merkle_tree = get_merkle_tree(ctx, delegated_puzzles.clone())?;
@@ -1956,12 +1999,15 @@ pub mod tests {
     fn test_old_memo_format(transition: (RootHash, RootHash, bool)) -> anyhow::Result<()> {
         let mut sim = Simulator::new();
 
-        let [owner, owner2] = BlsPair::range();
+        let [owner_sk, owner2_sk]: [SecretKey; 2] = test_secret_keys(2)?.try_into().unwrap();
 
-        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner.pk);
+        let owner_pk = owner_sk.public_key();
+        let owner2_pk = owner2_sk.public_key();
+
+        let owner_puzzle_hash = StandardArgs::curry_tree_hash(owner_pk);
         let coin = sim.new_coin(owner_puzzle_hash.into(), 1);
 
-        let owner2_puzzle_hash = StandardArgs::curry_tree_hash(owner2.pk);
+        let owner2_puzzle_hash = StandardArgs::curry_tree_hash(owner2_pk);
 
         let ctx = &mut SpendContext::new();
 
@@ -1973,9 +2019,9 @@ pub mod tests {
         let metadata_ptr = ctx.alloc(&vec![first_root_hash.value()])?;
         let metadata_hash = ctx.tree_hash(metadata_ptr);
         let state_layer_hash = CurriedProgram {
-            program: TreeHash::new(NFT_STATE_LAYER_HASH),
+            program: NFT_STATE_LAYER_PUZZLE_HASH,
             args: NftStateLayerArgs::<TreeHash, TreeHash> {
-                mod_hash: NFT_STATE_LAYER_HASH.into(),
+                mod_hash: NFT_STATE_LAYER_PUZZLE_HASH.into(),
                 metadata: metadata_hash,
                 metadata_updater_puzzle_hash: DL_METADATA_UPDATER_PUZZLE_HASH.into(),
                 inner_puzzle: inner_puzzle_hash,
@@ -1990,7 +2036,7 @@ pub mod tests {
         let launcher_coin = launcher.coin();
         let (launcher_conds, eve_coin) = launcher.spend(ctx, state_layer_hash.into(), kv_list)?;
 
-        StandardLayer::new(owner.pk).spend(ctx, coin, launcher_conds)?;
+        StandardLayer::new(owner_pk).spend(ctx, coin, launcher_conds)?;
 
         let spends = ctx.take();
         spends
@@ -2068,7 +2114,7 @@ pub mod tests {
         }));
 
         let inner_spend =
-            StandardLayer::new(owner.pk).spend_with_conditions(ctx, inner_spend_conditions)?;
+            StandardLayer::new(owner_pk).spend_with_conditions(ctx, inner_spend_conditions)?;
         let spend = datastore_from_launcher.clone().spend(ctx, inner_spend)?;
 
         let new_datastore = DataStore::<DataStoreMetadata>::from_spend(
@@ -2097,9 +2143,9 @@ pub mod tests {
             SingletonArgs::curry_tree_hash(
                 datastore_from_launcher.info.launcher_id,
                 CurriedProgram {
-                    program: TreeHash::new(NFT_STATE_LAYER_HASH),
+                    program: NFT_STATE_LAYER_PUZZLE_HASH,
                     args: NftStateLayerArgs::<TreeHash, DataStoreMetadata> {
-                        mod_hash: NFT_STATE_LAYER_HASH.into(),
+                        mod_hash: NFT_STATE_LAYER_PUZZLE_HASH.into(),
                         metadata: new_metadata,
                         metadata_updater_puzzle_hash: DL_METADATA_UPDATER_PUZZLE_HASH.into(),
                         inner_puzzle: new_inner_ph.into(),
@@ -2118,9 +2164,9 @@ pub mod tests {
                 assert_eq!(
                     proof.parent_inner_puzzle_hash,
                     CurriedProgram {
-                        program: TreeHash::new(NFT_STATE_LAYER_HASH),
+                        program: NFT_STATE_LAYER_PUZZLE_HASH,
                         args: NftStateLayerArgs::<TreeHash, DataStoreMetadata> {
-                            mod_hash: NFT_STATE_LAYER_HASH.into(),
+                            mod_hash: NFT_STATE_LAYER_PUZZLE_HASH.into(),
                             metadata: datastore_from_launcher.info.metadata,
                             metadata_updater_puzzle_hash: DL_METADATA_UPDATER_PUZZLE_HASH.into(),
                             inner_puzzle: owner_puzzle_hash,
@@ -2135,7 +2181,7 @@ pub mod tests {
 
         ctx.insert(spend);
 
-        sim.spend_coins(ctx.take(), &[owner.sk, owner2.sk])?;
+        sim.spend_coins(ctx.take(), &[owner_sk, owner2_sk])?;
 
         let eve_coin_state = sim
             .coin_state(eve_coin.coin_id())

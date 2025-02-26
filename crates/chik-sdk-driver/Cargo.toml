@@ -1,6 +1,6 @@
 [package]
 name = "chik-sdk-driver"
-version = "0.21.0"
+version = "0.20.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Driver code for interacting with standard puzzles on the Chik blockchain."
@@ -33,8 +33,6 @@ chik-bls = { workspace = true }
 chik-secp = { workspace = true }
 chik-protocol = { workspace = true }
 chik-puzzles = { workspace = true }
-chik-puzzle-types = { workspace = true }
-chik-sha2 = { workspace = true }
 klvm-traits = { workspace = true }
 klvm-utils = { workspace = true }
 klvmr = { workspace = true }
@@ -58,5 +56,3 @@ chik-consensus = { workspace = true }
 hex = { workspace = true }
 hex-literal = { workspace = true }
 rstest = { workspace = true }
-rand = { workspace = true }
-rand_chacha = { workspace = true }

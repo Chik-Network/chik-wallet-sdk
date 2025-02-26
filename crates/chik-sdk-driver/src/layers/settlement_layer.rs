@@ -1,5 +1,4 @@
-use chik_puzzle_types::offer::SettlementPaymentsSolution;
-use chik_puzzles::SETTLEMENT_PAYMENT_HASH;
+use chik_puzzles::offer::{SettlementPaymentsSolution, SETTLEMENT_PAYMENTS_PUZZLE_HASH};
 use klvm_traits::FromKlvm;
 use klvmr::{Allocator, NodePtr};
 
@@ -25,7 +24,7 @@ impl Layer for SettlementLayer {
     }
 
     fn parse_puzzle(_allocator: &Allocator, puzzle: Puzzle) -> Result<Option<Self>, DriverError> {
-        if puzzle.curried_puzzle_hash() != SETTLEMENT_PAYMENT_HASH.into() {
+        if puzzle.curried_puzzle_hash() != SETTLEMENT_PAYMENTS_PUZZLE_HASH {
             return Ok(None);
         }
         Ok(Some(Self))

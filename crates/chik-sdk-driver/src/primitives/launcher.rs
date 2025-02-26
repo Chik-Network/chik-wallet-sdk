@@ -1,8 +1,9 @@
 #![allow(clippy::missing_const_for_fn)]
 
 use chik_protocol::{Bytes32, Coin, CoinSpend, Program};
-use chik_puzzle_types::singleton::{LauncherSolution, SingletonArgs};
-use chik_puzzles::{SINGLETON_LAUNCHER, SINGLETON_LAUNCHER_HASH};
+use chik_puzzles::singleton::{
+    LauncherSolution, SingletonArgs, SINGLETON_LAUNCHER_PUZZLE, SINGLETON_LAUNCHER_PUZZLE_HASH,
+};
 use chik_sdk_types::{announcement_id, Conditions, Memos};
 use klvm_traits::ToKlvm;
 use klvmr::{Allocator, NodePtr};
@@ -34,8 +35,12 @@ impl Launcher {
     /// By default, no hint is used when creating the launcher coin. To specify a hint, use [`Launcher::hinted`].
     pub fn new(parent_coin_id: Bytes32, amount: u64) -> Self {
         Self::from_coin(
-            Coin::new(parent_coin_id, SINGLETON_LAUNCHER_HASH.into(), amount),
-            Conditions::new().create_coin(SINGLETON_LAUNCHER_HASH.into(), amount, None),
+            Coin::new(
+                parent_coin_id,
+                SINGLETON_LAUNCHER_PUZZLE_HASH.into(),
+                amount,
+            ),
+            Conditions::new().create_coin(SINGLETON_LAUNCHER_PUZZLE_HASH.into(), amount, None),
         )
     }
 
@@ -43,8 +48,16 @@ impl Launcher {
     /// The created launcher coin will be hinted to make identifying it easier later.
     pub fn with_memos(parent_coin_id: Bytes32, amount: u64, memos: Memos<NodePtr>) -> Self {
         Self::from_coin(
-            Coin::new(parent_coin_id, SINGLETON_LAUNCHER_HASH.into(), amount),
-            Conditions::new().create_coin(SINGLETON_LAUNCHER_HASH.into(), amount, Some(memos)),
+            Coin::new(
+                parent_coin_id,
+                SINGLETON_LAUNCHER_PUZZLE_HASH.into(),
+                amount,
+            ),
+            Conditions::new().create_coin(
+                SINGLETON_LAUNCHER_PUZZLE_HASH.into(),
+                amount,
+                Some(memos),
+            ),
         )
     }
 
@@ -55,9 +68,13 @@ impl Launcher {
     /// For example, this is useful for minting NFTs from intermediate coins created with an earlier instance of a DID.
     pub fn create_early(parent_coin_id: Bytes32, amount: u64) -> (Conditions, Self) {
         (
-            Conditions::new().create_coin(SINGLETON_LAUNCHER_HASH.into(), amount, None),
+            Conditions::new().create_coin(SINGLETON_LAUNCHER_PUZZLE_HASH.into(), amount, None),
             Self::from_coin(
-                Coin::new(parent_coin_id, SINGLETON_LAUNCHER_HASH.into(), amount),
+                Coin::new(
+                    parent_coin_id,
+                    SINGLETON_LAUNCHER_PUZZLE_HASH.into(),
+                    amount,
+                ),
                 Conditions::new(),
             ),
         )
@@ -74,9 +91,17 @@ impl Launcher {
         memos: Memos<NodePtr>,
     ) -> (Conditions, Self) {
         (
-            Conditions::new().create_coin(SINGLETON_LAUNCHER_HASH.into(), amount, Some(memos)),
+            Conditions::new().create_coin(
+                SINGLETON_LAUNCHER_PUZZLE_HASH.into(),
+                amount,
+                Some(memos),
+            ),
             Self::from_coin(
-                Coin::new(parent_coin_id, SINGLETON_LAUNCHER_HASH.into(), amount),
+                Coin::new(
+                    parent_coin_id,
+                    SINGLETON_LAUNCHER_PUZZLE_HASH.into(),
+                    amount,
+                ),
                 Conditions::new(),
             ),
         )
@@ -119,7 +144,7 @@ impl Launcher {
 
         ctx.insert(CoinSpend::new(
             self.coin,
-            Program::from(SINGLETON_LAUNCHER.to_vec()),
+            Program::from(SINGLETON_LAUNCHER_PUZZLE.to_vec()),
             solution,
         ));
 
@@ -150,19 +175,17 @@ mod tests {
     #[test]
     fn test_singleton_launcher() -> anyhow::Result<()> {
         let mut sim = Simulator::new();
-
-        let alice = sim.bls(1);
-        let alice_p2 = StandardLayer::new(alice.pk);
+        let (sk, pk, _puzzle_hash, coin) = sim.new_p2(1)?;
 
         let ctx = &mut SpendContext::new();
-        let launcher = Launcher::new(alice.coin.coin_id(), 1);
+        let launcher = Launcher::new(coin.coin_id(), 1);
         assert_eq!(launcher.coin.amount, 1);
 
         let (conditions, singleton) = launcher.spend(ctx, Bytes32::default(), ())?;
-        alice_p2.spend(ctx, alice.coin, conditions)?;
+        StandardLayer::new(pk).spend(ctx, coin, conditions)?;
         assert_eq!(singleton.amount, 1);
 
-        sim.spend_coins(ctx.take(), &[alice.sk])?;
+        sim.spend_coins(ctx.take(), &[sk])?;
 
         Ok(())
     }
@@ -170,22 +193,20 @@ mod tests {
     #[test]
     fn test_singleton_launcher_custom_amount() -> anyhow::Result<()> {
         let mut sim = Simulator::new();
-
-        let alice = sim.bls(1);
-        let alice_p2 = StandardLayer::new(alice.pk);
+        let (sk, pk, _puzzle_hash, coin) = sim.new_p2(1)?;
 
         let ctx = &mut SpendContext::new();
-        let launcher = Launcher::new(alice.coin.coin_id(), 0);
+        let launcher = Launcher::new(coin.coin_id(), 0);
         assert_eq!(launcher.coin.amount, 0);
 
         let (conditions, singleton) =
             launcher
                 .with_singleton_amount(1)
                 .spend(ctx, Bytes32::default(), ())?;
-        alice_p2.spend(ctx, alice.coin, conditions)?;
+        StandardLayer::new(pk).spend(ctx, coin, conditions)?;
         assert_eq!(singleton.amount, 1);
 
-        sim.spend_coins(ctx.take(), &[alice.sk])?;
+        sim.spend_coins(ctx.take(), &[sk])?;
 
         Ok(())
     }

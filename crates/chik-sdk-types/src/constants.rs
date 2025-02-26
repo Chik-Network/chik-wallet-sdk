@@ -1,7 +1,7 @@
 use chik_consensus::consensus_constants::ConsensusConstants;
 use chik_protocol::Bytes32;
-use chik_sha2::Sha256;
 use hex_literal::hex;
+use klvmr::sha2::Sha256;
 use once_cell::sync::Lazy;
 
 const MAINNET_GENESIS_CHALLENGE: Bytes32 = Bytes32::new(hex!(

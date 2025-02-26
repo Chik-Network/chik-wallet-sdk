@@ -1,33 +1,34 @@
 import test from "ava";
 
 import {
-  bytesEqual,
-  Klvm,
-  Coin,
-  Constants,
+  KlvmAllocator,
+  compareBytes,
   curryTreeHash,
   fromHex,
-  NftMetadata,
-  NftMint,
   PublicKey,
   Simulator,
+  toCoinId,
   toHex,
 } from "../index.js";
 
 test("calculate coin id", (t) => {
-  const coinId = new Coin(
-    fromHex("4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"),
-    fromHex("dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986"),
-    100n
-  ).coinId();
+  const coinId = toCoinId({
+    parentCoinInfo: fromHex(
+      "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+    ),
+    puzzleHash: fromHex(
+      "dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986",
+    ),
+    amount: 100n,
+  });
 
   t.true(
-    bytesEqual(
+    compareBytes(
       coinId,
       fromHex(
-        "fd3e669c27be9d634fe79f1f7d7d8aaacc3597b855cffea1d708f4642f1d542a"
-      )
-    )
+        "fd3e669c27be9d634fe79f1f7d7d8aaacc3597b855cffea1d708f4642f1d542a",
+      ),
+    ),
   );
 });
 
@@ -35,7 +36,7 @@ test("byte equality", (t) => {
   const a = Uint8Array.from([1, 2, 3]);
   const b = Uint8Array.from([1, 2, 3]);
 
-  t.true(bytesEqual(a, b));
+  t.true(compareBytes(a, b));
   t.true(Buffer.from(a).equals(b));
 });
 
@@ -43,21 +44,21 @@ test("byte inequality", (t) => {
   const a = Uint8Array.from([1, 2, 3]);
   const b = Uint8Array.from([1, 2, 4]);
 
-  t.true(!bytesEqual(a, b));
+  t.true(!compareBytes(a, b));
   t.true(!Buffer.from(a).equals(b));
 });
 
 test("atom roundtrip", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
   const expected = Uint8Array.from([1, 2, 3]);
   const atom = klvm.alloc(expected);
 
-  t.true(bytesEqual(atom.toAtom()!, expected));
+  t.true(compareBytes(atom.toAtom()!, expected));
 });
 
 test("string roundtrip", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
   const expected = "hello world";
   const atom = klvm.alloc(expected);
@@ -65,7 +66,7 @@ test("string roundtrip", (t) => {
 });
 
 test("number roundtrip", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
   for (const expected of [
     Number.MIN_SAFE_INTEGER,
@@ -81,7 +82,7 @@ test("number roundtrip", (t) => {
 });
 
 test("invalid number", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
   for (const expected of [
     Number.MIN_SAFE_INTEGER - 1,
@@ -95,7 +96,7 @@ test("invalid number", (t) => {
 });
 
 test("bigint roundtrip", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
   for (const expected of [
     0n,
@@ -113,27 +114,27 @@ test("bigint roundtrip", (t) => {
 });
 
 test("pair roundtrip", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
-  const ptr = klvm.pair(klvm.int(1), klvm.bigInt(100n));
-  const { first, rest } = ptr.toPair()!;
+  const ptr = klvm.pair(1, 100n);
+  const [first, rest] = ptr.toPair()!;
 
-  t.is(first.toInt(), 1);
+  t.is(first.toSmallNumber(), 1);
   t.is(rest.toBigInt(), 100n);
 });
 
 test("list roundtrip", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
   const items = Array.from({ length: 10 }, (_, i) => i);
   const ptr = klvm.alloc(items);
-  const list = ptr.toList()?.map((ptr) => ptr.toInt());
+  const list = ptr.toList().map((ptr) => ptr.toSmallNumber());
 
   t.deepEqual(list, items);
 });
 
 test("klvm value allocation", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
   const shared = klvm.alloc(42);
 
@@ -157,148 +158,156 @@ test("klvm value allocation", (t) => {
     shared,
   ]);
 
-  t.true(bytesEqual(manual.treeHash(), auto.treeHash()));
+  t.true(compareBytes(klvm.treeHash(manual), klvm.treeHash(auto)));
 });
 
 test("public key roundtrip", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
-  const ptr = klvm.alloc(PublicKey.infinity());
-  const pk = PublicKey.fromBytes(ptr.toAtom()!);
+  const ptr = klvm.alloc(PublicKey.empty());
+  const pk = ptr.toPublicKey()!;
 
-  t.true(bytesEqual(PublicKey.infinity().toBytes(), pk.toBytes()));
+  t.true(compareBytes(PublicKey.empty().toBytes(), pk.toBytes()));
 });
 
 test("curry add function", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
   const addMod = klvm.deserialize(fromHex("ff10ff02ff0580"));
-  const addToTen = addMod.curry([klvm.alloc(10)]);
-  const result = addToTen.run(klvm.alloc([5]), 10000000n, true);
+  const addToTen = klvm.curry(addMod, [klvm.alloc(10)]);
+  const result = klvm.run(addToTen, klvm.alloc([5]), 10000000n, true);
 
-  t.is(result.value.toInt(), 15);
+  t.is(result.value.toSmallNumber(), 15);
   t.is(result.cost, 1082n);
 });
 
 test("curry roundtrip", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
   const items = Array.from({ length: 10 }, (_, i) => i);
-  const ptr = klvm.nil().curry(items.map((i) => klvm.alloc(i)));
+  const ptr = klvm.curry(
+    klvm.nil(),
+    items.map((i) => klvm.alloc(i)),
+  );
   const uncurry = ptr.uncurry()!;
-  const args = uncurry.args?.map((ptr) => ptr.toInt());
+  const args = uncurry.args.map((ptr) => ptr.toSmallNumber());
 
-  t.true(bytesEqual(klvm.nil().treeHash(), uncurry.program.treeHash()));
+  t.true(
+    compareBytes(klvm.treeHash(klvm.nil()), klvm.treeHash(uncurry.program)),
+  );
   t.deepEqual(args, items);
 });
 
 test("klvm serialization", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
   for (const [ptr, hex] of [
     [klvm.alloc(Uint8Array.from([1, 2, 3])), "83010203"],
     [klvm.alloc(420), "8201a4"],
     [klvm.alloc(100n), "64"],
-    [
-      klvm.pair(klvm.atom(Uint8Array.from([1, 2, 3])), klvm.bigInt(100n)),
-      "ff8301020364",
-    ],
+    [klvm.pair(Uint8Array.from([1, 2, 3]), 100n), "ff8301020364"],
   ] as const) {
     const serialized = ptr.serialize();
     const deserialized = klvm.deserialize(serialized);
 
-    t.true(bytesEqual(ptr.treeHash(), deserialized.treeHash()));
+    t.true(compareBytes(klvm.treeHash(ptr), klvm.treeHash(deserialized)));
     t.is(hex as string, toHex(serialized));
   }
 });
 
 test("curry tree hash", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
   const items = Array.from({ length: 10 }, (_, i) => i);
-  const ptr = klvm.nil().curry(items.map((i) => klvm.alloc(i)));
+  const ptr = klvm.curry(
+    klvm.nil(),
+    items.map((i) => klvm.alloc(i)),
+  );
 
   const treeHash = curryTreeHash(
-    klvm.nil().treeHash(),
-    items.map((i) => klvm.alloc(i).treeHash())
+    klvm.treeHash(klvm.nil()),
+    items.map((i) => klvm.treeHash(klvm.alloc(i))),
   );
-  const expected = ptr.treeHash();
+  const expected = klvm.treeHash(ptr);
 
-  t.true(bytesEqual(treeHash, expected));
+  t.true(compareBytes(treeHash, expected));
 });
 
 test("mint and spend nft", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
   const simulator = new Simulator();
-  const alice = simulator.bls(1n);
+  const p2 = simulator.newP2(1n);
 
-  const metadata = new NftMetadata(
-    1n,
-    1n,
-    ["https://example.com"],
-    null,
-    ["https://example.com"],
-    null,
-    ["https://example.com"],
-    null
-  );
-
-  const result = klvm.mintNfts(alice.coin.coinId(), [
-    new NftMint(
-      klvm.nftMetadata(metadata),
-      Constants.defaultMetadataUpdaterHash(),
-      alice.puzzleHash,
-      alice.puzzleHash,
-      300
-    ),
+  const result = klvm.mintNfts(toCoinId(p2.coin), [
+    {
+      metadata: {
+        dataUris: ["https://example.com"],
+        metadataUris: ["https://example.com"],
+        licenseUris: ["https://example.com"],
+        editionNumber: 1n,
+        editionTotal: 1n,
+      },
+      p2PuzzleHash: p2.puzzleHash,
+      royaltyPuzzleHash: p2.puzzleHash,
+      royaltyTenThousandths: 300,
+    },
   ]);
 
-  const spend = klvm.standardSpend(
-    alice.pk,
-    klvm.delegatedSpend(result.parentConditions)
+  const spend = klvm.spendP2Standard(
+    p2.publicKey,
+    klvm.delegatedSpendForConditions(result.parentConditions),
   );
 
-  klvm.spendCoin(alice.coin, spend);
-
-  simulator.spendCoins(klvm.coinSpends(), [alice.sk]);
-
-  const innerSpend = klvm.standardSpend(
-    alice.pk,
-    klvm.delegatedSpend([
-      klvm.createCoin(alice.puzzleHash, 1n, klvm.alloc([alice.puzzleHash])),
-    ])
+  simulator.spend(
+    result.coinSpends.concat([
+      {
+        coin: p2.coin,
+        puzzleReveal: spend.puzzle.serialize(),
+        solution: spend.solution.serialize(),
+      },
+    ]),
+    [p2.secretKey],
   );
 
-  klvm.spendNft(result.nfts[0], innerSpend);
+  const innerSpend = klvm.spendP2Standard(
+    p2.publicKey,
+    klvm.delegatedSpendForConditions([
+      klvm.createCoin(p2.puzzleHash, 1n, klvm.alloc([p2.puzzleHash])),
+    ]),
+  );
 
-  simulator.spendCoins(klvm.coinSpends(), [alice.sk]);
+  const coinSpends = klvm.spendNft(result.nfts[0], innerSpend);
+
+  simulator.spend(coinSpends, [p2.secretKey]);
 
   t.true(
-    bytesEqual(
+    compareBytes(
       klvm
-        .nftMetadata(result.nfts[0].info.metadata.parseNftMetadata()!)
+        .nftMetadata(
+          klvm.parseNftMetadata(klvm.deserialize(result.nfts[0].info.metadata)),
+        )
         .serialize(),
-      result.nfts[0].info.metadata.serialize()
-    )
+      result.nfts[0].info.metadata,
+    ),
   );
 });
 
 test("create and parse condition", (t) => {
-  const klvm = new Klvm();
+  const klvm = new KlvmAllocator();
 
   const puzzleHash = fromHex("ff".repeat(32));
 
   const condition = klvm.createCoin(puzzleHash, 1n, klvm.alloc([puzzleHash]));
-  const parsed = condition.parseCreateCoin();
+  const parsed = klvm.parseCreateCoin(condition);
 
-  t.true(parsed !== null && bytesEqual(parsed.puzzleHash, puzzleHash));
+  t.true(parsed !== null && compareBytes(parsed.puzzleHash, puzzleHash));
   t.true(parsed !== null && parsed.amount === 1n);
 
   t.deepEqual(
     parsed?.memos
       ?.toList()
-      ?.map((memo) => memo.toAtom())
+      .map((memo) => memo.toAtom())
       .filter((memo) => memo !== null),
-    [puzzleHash]
+    [puzzleHash],
   );
 });

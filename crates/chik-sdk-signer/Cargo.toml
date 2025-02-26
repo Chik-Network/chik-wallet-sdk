@@ -1,6 +1,6 @@
 [package]
 name = "chik-sdk-signer"
-version = "0.21.0"
+version = "0.20.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Calculates the signatures required for coin spends in a transaction."
@@ -19,7 +19,6 @@ chik-bls = { workspace = true }
 chik-secp = { workspace = true }
 chik-protocol = { workspace = true }
 chik-consensus = { workspace = true }
-chik-sha2 = { workspace = true }
 klvm-traits = { workspace = true, features = ["chik-secp"] }
 klvmr = { workspace = true }
 thiserror = { workspace = true }
@@ -27,7 +26,7 @@ chik-sdk-types = { workspace = true }
 k256 = { workspace = true }
 
 [dev-dependencies]
-chik-puzzle-types = { workspace = true }
+chik-puzzles = { workspace = true }
 hex = { workspace = true }
 hex-literal = { workspace = true }
 rand = { workspace = true }

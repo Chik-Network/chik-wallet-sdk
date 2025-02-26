@@ -1,6 +1,6 @@
 [package]
 name = "chik-sdk-utils"
-version = "0.21.0"
+version = "0.20.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "General utilities for the chik-wallet-sdk."
@@ -17,6 +17,7 @@ workspace = true
 [dependencies]
 thiserror = { workspace = true }
 chik-protocol = { workspace = true }
+hex = { workspace = true }
 bech32 = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }

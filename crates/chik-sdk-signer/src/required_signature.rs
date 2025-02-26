@@ -75,7 +75,7 @@ mod tests {
 
     use chik_bls::{master_to_wallet_unhardened, SecretKey};
     use chik_protocol::{Bytes, Bytes32, Coin};
-    use chik_puzzle_types::DeriveSynthetic;
+    use chik_puzzles::DeriveSynthetic;
     use chik_sdk_types::{AggSig, AggSigKind, MAINNET_CONSTANTS};
     use hex_literal::hex;
 

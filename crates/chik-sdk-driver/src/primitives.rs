@@ -22,10 +22,4 @@ pub use datalayer::*;
 mod vault;
 
 #[cfg(feature = "experimental-vaults")]
-mod mips;
-
-#[cfg(feature = "experimental-vaults")]
 pub use vault::*;
-
-#[cfg(feature = "experimental-vaults")]
-pub use mips::*;

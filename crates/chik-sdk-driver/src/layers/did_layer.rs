@@ -1,9 +1,8 @@
 use chik_protocol::Bytes32;
-use chik_puzzle_types::{
-    did::{DidArgs, DidSolution},
-    singleton::SingletonStruct,
+use chik_puzzles::{
+    did::{DidArgs, DidSolution, DID_INNER_PUZZLE_HASH},
+    singleton::{SingletonStruct, SINGLETON_LAUNCHER_PUZZLE_HASH, SINGLETON_TOP_LAYER_PUZZLE_HASH},
 };
-use chik_puzzles::{DID_INNERPUZ_HASH, SINGLETON_LAUNCHER_HASH, SINGLETON_TOP_LAYER_V1_1_HASH};
 use klvm_traits::{FromKlvm, ToKlvm};
 use klvm_utils::{ToTreeHash, TreeHash};
 use klvmr::{Allocator, NodePtr};
@@ -66,14 +65,14 @@ where
             return Ok(None);
         };
 
-        if puzzle.mod_hash != DID_INNERPUZ_HASH.into() {
+        if puzzle.mod_hash != DID_INNER_PUZZLE_HASH {
             return Ok(None);
         }
 
         let args = DidArgs::<NodePtr, M>::from_klvm(allocator, puzzle.args)?;
 
-        if args.singleton_struct.mod_hash != SINGLETON_TOP_LAYER_V1_1_HASH.into()
-            || args.singleton_struct.launcher_puzzle_hash != SINGLETON_LAUNCHER_HASH.into()
+        if args.singleton_struct.mod_hash != SINGLETON_TOP_LAYER_PUZZLE_HASH.into()
+            || args.singleton_struct.launcher_puzzle_hash != SINGLETON_LAUNCHER_PUZZLE_HASH.into()
         {
             return Err(DriverError::InvalidSingletonStruct);
         }

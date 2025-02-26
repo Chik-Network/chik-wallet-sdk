@@ -1,5 +1,5 @@
 use chik_protocol::{Bytes32, Coin};
-use chik_puzzle_types::CoinProof;
+use chik_puzzles::CoinProof;
 
 use crate::Spend;
 

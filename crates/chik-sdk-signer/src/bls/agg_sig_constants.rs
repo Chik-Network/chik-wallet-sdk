@@ -1,6 +1,6 @@
 use chik_consensus::consensus_constants::ConsensusConstants;
 use chik_protocol::Bytes32;
-use chik_sha2::Sha256;
+use klvmr::sha2::Sha256;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AggSigConstants {

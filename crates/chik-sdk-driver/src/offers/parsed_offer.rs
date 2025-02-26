@@ -1,6 +1,6 @@
 use chik_bls::Signature;
 use chik_protocol::{Bytes32, CoinSpend};
-use chik_puzzle_types::offer::NotarizedPayment;
+use chik_puzzles::offer::NotarizedPayment;
 use indexmap::IndexMap;
 
 use crate::{OfferBuilder, Puzzle, Take};

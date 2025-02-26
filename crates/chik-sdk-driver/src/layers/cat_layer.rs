@@ -1,6 +1,5 @@
 use chik_protocol::Bytes32;
-use chik_puzzle_types::cat::{CatArgs, CatSolution};
-use chik_puzzles::CAT_PUZZLE_HASH;
+use chik_puzzles::cat::{CatArgs, CatSolution, CAT_PUZZLE_HASH};
 use klvm_traits::FromKlvm;
 use klvm_utils::{ToTreeHash, TreeHash};
 use klvmr::{Allocator, NodePtr};
@@ -37,7 +36,7 @@ where
             return Ok(None);
         };
 
-        if puzzle.mod_hash != CAT_PUZZLE_HASH.into() {
+        if puzzle.mod_hash != CAT_PUZZLE_HASH {
             return Ok(None);
         }
 
@@ -114,7 +113,7 @@ where
 #[cfg(test)]
 mod tests {
     use chik_protocol::Coin;
-    use chik_puzzle_types::CoinProof;
+    use chik_puzzles::CoinProof;
 
     use super::*;
 

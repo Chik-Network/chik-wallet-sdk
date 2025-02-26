@@ -1,5 +1,5 @@
 use chik_protocol::Bytes32;
-use chik_puzzles::{SINGLETON_LAUNCHER_HASH, SINGLETON_TOP_LAYER_V1_1_HASH};
+use chik_puzzles::singleton::{SINGLETON_LAUNCHER_PUZZLE_HASH, SINGLETON_TOP_LAYER_PUZZLE_HASH};
 use hex_literal::hex;
 use klvm_traits::{FromKlvm, ToKlvm};
 use klvm_utils::{CurriedProgram, ToTreeHash, TreeHash};
@@ -22,9 +22,9 @@ impl Mod for P2SingletonArgs {
 impl P2SingletonArgs {
     pub fn new(launcher_id: Bytes32) -> Self {
         Self {
-            singleton_mod_hash: SINGLETON_TOP_LAYER_V1_1_HASH.into(),
+            singleton_mod_hash: SINGLETON_TOP_LAYER_PUZZLE_HASH.into(),
             launcher_id,
-            launcher_puzzle_hash: SINGLETON_LAUNCHER_HASH.into(),
+            launcher_puzzle_hash: SINGLETON_LAUNCHER_PUZZLE_HASH.into(),
         }
     }
 

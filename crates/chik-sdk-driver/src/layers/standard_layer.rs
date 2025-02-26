@@ -1,7 +1,6 @@
 use chik_bls::PublicKey;
 use chik_protocol::Coin;
-use chik_puzzle_types::standard::{StandardArgs, StandardSolution};
-use chik_puzzles::P2_DELEGATED_PUZZLE_OR_HIDDEN_PUZZLE_HASH;
+use chik_puzzles::standard::{StandardArgs, StandardSolution, STANDARD_PUZZLE_HASH};
 use chik_sdk_types::Conditions;
 use klvm_traits::{klvm_quote, FromKlvm};
 use klvm_utils::{ToTreeHash, TreeHash};
@@ -76,7 +75,7 @@ impl Layer for StandardLayer {
             return Ok(None);
         };
 
-        if puzzle.mod_hash != P2_DELEGATED_PUZZLE_OR_HIDDEN_PUZZLE_HASH.into() {
+        if puzzle.mod_hash != STANDARD_PUZZLE_HASH {
             return Ok(None);
         }
 
@@ -129,22 +128,22 @@ mod tests {
     fn test_flash_loan() -> anyhow::Result<()> {
         let mut sim = Simulator::new();
         let ctx = &mut SpendContext::new();
-        let alice = sim.bls(1);
-        let p2 = StandardLayer::new(alice.pk);
+        let (sk, pk, puzzle_hash, coin) = sim.new_p2(1)?;
+        let p2 = StandardLayer::new(pk);
 
         p2.spend(
             ctx,
-            alice.coin,
-            Conditions::new().create_coin(alice.puzzle_hash, u64::MAX, None),
+            coin,
+            Conditions::new().create_coin(puzzle_hash, u64::MAX, None),
         )?;
 
         p2.spend(
             ctx,
-            Coin::new(alice.coin.coin_id(), alice.puzzle_hash, u64::MAX),
-            Conditions::new().create_coin(alice.puzzle_hash, 1, None),
+            Coin::new(coin.coin_id(), puzzle_hash, u64::MAX),
+            Conditions::new().create_coin(puzzle_hash, 1, None),
         )?;
 
-        sim.spend_coins(ctx.take(), &[alice.sk])?;
+        sim.spend_coins(ctx.take(), &[sk])?;
 
         Ok(())
     }

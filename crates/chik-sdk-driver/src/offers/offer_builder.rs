@@ -1,5 +1,5 @@
 use chik_protocol::{Bytes32, Coin, CoinSpend, SpendBundle};
-use chik_puzzle_types::offer::{NotarizedPayment, Payment, SettlementPaymentsSolution};
+use chik_puzzles::offer::{NotarizedPayment, Payment, SettlementPaymentsSolution};
 use chik_sdk_types::{announcement_id, AssertPuzzleAnnouncement};
 use indexmap::IndexMap;
 use klvm_traits::ToKlvm;

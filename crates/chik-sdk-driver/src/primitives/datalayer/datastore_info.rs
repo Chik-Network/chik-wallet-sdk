@@ -2,7 +2,7 @@ use crate::{
     DelegationLayer, DriverError, Layer, NftStateLayer, OracleLayer, SingletonLayer, SpendContext,
 };
 use chik_protocol::{Bytes, Bytes32};
-use chik_puzzle_types::nft::NftStateLayerArgs;
+use chik_puzzles::nft::NftStateLayerArgs;
 use chik_sdk_types::{
     DelegationLayerArgs, MerkleTree, WriterLayerArgs, DELEGATION_LAYER_PUZZLE_HASH,
     DL_METADATA_UPDATER_PUZZLE_HASH,

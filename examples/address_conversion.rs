@@ -1,23 +1,23 @@
-use chik_sdk_utils::Address;
+use chik_sdk_utils::{decode_address, decode_puzzle_hash, encode_address, encode_puzzle_hash};
 use hex_literal::hex;
 
 fn main() -> anyhow::Result<()> {
-    let puzzle_hash =
-        hex!("aca490e9f3ebcafa3d5342d347db2703b31029511f5b40c11441af1c961f6585").into();
+    let puzzle_hash = hex!("aca490e9f3ebcafa3d5342d347db2703b31029511f5b40c11441af1c961f6585");
+    let encoded_puzzle_hash = encode_puzzle_hash(puzzle_hash, true);
 
-    let address = Address::new(puzzle_hash, "xck".to_string()).encode()?;
+    let address = encode_address(puzzle_hash, "xck")?;
 
+    println!("Puzzle hash: {encoded_puzzle_hash}");
     println!("XCK address: {address}");
 
-    let roundtrip = Address::decode(&address)?;
+    let roundtrip = decode_address(&address)?;
     println!(
         "Address matches puzzle hash: {}",
-        roundtrip
-            == Address {
-                puzzle_hash,
-                prefix: "xck".to_string()
-            }
+        roundtrip == (puzzle_hash, "xck".to_string())
     );
+
+    let roundtrip = decode_puzzle_hash(&encoded_puzzle_hash)?;
+    println!("Puzzle hash matches: {}", roundtrip == puzzle_hash);
 
     Ok(())
 }

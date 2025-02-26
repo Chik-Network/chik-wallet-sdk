@@ -2,7 +2,6 @@
 #![doc = include_str!("../README.md")]
 
 pub use chik_sdk_client::*;
-pub use chik_sdk_coinset::*;
 pub use chik_sdk_driver::*;
 pub use chik_sdk_signer::*;
 pub use chik_sdk_test::*;

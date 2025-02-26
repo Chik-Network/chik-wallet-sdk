@@ -1,6 +1,6 @@
 [package]
 name = "chik-sdk-types"
-version = "0.21.0"
+version = "0.20.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Standard Chik types for things such as puzzle info and conditions."
@@ -16,7 +16,7 @@ workspace = true
 
 [features]
 chip-0035 = []
-experimental-vaults = ["klvm-traits/chik-secp"]
+experimental-vaults = []
 
 [dependencies]
 chik-sdk-derive = { workspace = true }
@@ -24,9 +24,7 @@ chik-bls = { workspace = true }
 chik-secp = { workspace = true }
 chik-protocol = { workspace = true }
 chik-consensus = { workspace = true }
-chik-puzzle-types = { workspace = true }
 chik-puzzles = { workspace = true }
-chik-sha2 = { workspace = true }
 klvm-traits = { workspace = true }
 klvm-utils = { workspace = true }
 klvmr = { workspace = true }

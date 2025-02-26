@@ -1,4 +1,4 @@
-use chik_puzzle_types::standard::StandardSolution;
+use chik_puzzles::standard::StandardSolution;
 use chik_sdk_types::{Conditions, WriterLayerArgs, WriterLayerSolution, WRITER_LAYER_PUZZLE_HASH};
 use klvm_traits::{klvm_quote, FromKlvm};
 use klvm_utils::{ToTreeHash, TreeHash};

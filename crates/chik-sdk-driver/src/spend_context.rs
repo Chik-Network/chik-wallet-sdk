@@ -2,11 +2,12 @@ use std::collections::HashMap;
 
 use chik_protocol::{Bytes32, Coin, CoinSpend, Program};
 use chik_puzzles::{
-    NFT_METADATA_UPDATER_DEFAULT, NFT_METADATA_UPDATER_DEFAULT_HASH, SETTLEMENT_PAYMENT,
-    SETTLEMENT_PAYMENT_HASH, SINGLETON_LAUNCHER, SINGLETON_LAUNCHER_HASH,
+    nft::{NFT_METADATA_UPDATER_PUZZLE, NFT_METADATA_UPDATER_PUZZLE_HASH},
+    offer::{SETTLEMENT_PAYMENTS_PUZZLE, SETTLEMENT_PAYMENTS_PUZZLE_HASH},
+    singleton::{SINGLETON_LAUNCHER_PUZZLE, SINGLETON_LAUNCHER_PUZZLE_HASH},
 };
-use chik_sdk_types::{run_puzzle, Conditions, Memos, Mod};
-use klvm_traits::{klvm_quote, FromKlvm, ToKlvm};
+use chik_sdk_types::{run_puzzle, Memos, Mod};
+use klvm_traits::{FromKlvm, ToKlvm};
 use klvm_utils::{tree_hash, CurriedProgram, TreeHash};
 use klvmr::{serde::node_from_bytes, Allocator, NodePtr};
 
@@ -14,7 +15,6 @@ use klvmr::{serde::node_from_bytes, Allocator, NodePtr};
 use chik_sdk_types::{
     FORCE_ASSERT_COIN_ANNOUNCEMENT_PUZZLE, FORCE_ASSERT_COIN_ANNOUNCEMENT_PUZZLE_HASH,
     FORCE_COIN_MESSAGE_PUZZLE, FORCE_COIN_MESSAGE_PUZZLE_HASH,
-    PREVENT_MULTIPLE_CREATE_COINS_PUZZLE, PREVENT_MULTIPLE_CREATE_COINS_PUZZLE_HASH,
 };
 
 use crate::{DriverError, Spend};
@@ -121,17 +121,17 @@ impl SpendContext {
 
     pub fn nft_metadata_updater(&mut self) -> Result<NodePtr, DriverError> {
         self.puzzle(
-            NFT_METADATA_UPDATER_DEFAULT_HASH.into(),
-            &NFT_METADATA_UPDATER_DEFAULT,
+            NFT_METADATA_UPDATER_PUZZLE_HASH,
+            &NFT_METADATA_UPDATER_PUZZLE,
         )
     }
 
     pub fn singleton_launcher(&mut self) -> Result<NodePtr, DriverError> {
-        self.puzzle(SINGLETON_LAUNCHER_HASH.into(), &SINGLETON_LAUNCHER)
+        self.puzzle(SINGLETON_LAUNCHER_PUZZLE_HASH, &SINGLETON_LAUNCHER_PUZZLE)
     }
 
     pub fn settlement_payments_puzzle(&mut self) -> Result<NodePtr, DriverError> {
-        self.puzzle(SETTLEMENT_PAYMENT_HASH.into(), &SETTLEMENT_PAYMENT)
+        self.puzzle(SETTLEMENT_PAYMENTS_PUZZLE_HASH, &SETTLEMENT_PAYMENTS_PUZZLE)
     }
 
     #[cfg(feature = "experimental-vaults")]
@@ -144,14 +144,6 @@ impl SpendContext {
         self.puzzle(
             FORCE_ASSERT_COIN_ANNOUNCEMENT_PUZZLE_HASH,
             &FORCE_ASSERT_COIN_ANNOUNCEMENT_PUZZLE,
-        )
-    }
-
-    #[cfg(feature = "experimental-vaults")]
-    pub fn prevent_multiple_create_coins_puzzle(&mut self) -> Result<NodePtr, DriverError> {
-        self.puzzle(
-            PREVENT_MULTIPLE_CREATE_COINS_PUZZLE_HASH,
-            &PREVENT_MULTIPLE_CREATE_COINS_PUZZLE,
         )
     }
 
@@ -178,11 +170,6 @@ impl SpendContext {
             self.puzzles.insert(puzzle_hash, puzzle);
             Ok(puzzle)
         }
-    }
-
-    pub fn delegated_spend(&mut self, conditions: Conditions) -> Result<Spend, DriverError> {
-        let puzzle = self.alloc(&klvm_quote!(conditions))?;
-        Ok(Spend::new(puzzle, NodePtr::NIL))
     }
 }
 

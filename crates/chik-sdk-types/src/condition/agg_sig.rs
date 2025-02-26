@@ -1,7 +1,7 @@
 use chik_bls::PublicKey;
 use chik_protocol::{Bytes, Bytes32};
-use chik_sha2::Sha256;
 use klvm_traits::{FromKlvm, ToKlvm};
+use klvmr::sha2::Sha256;
 
 use super::Condition;
 

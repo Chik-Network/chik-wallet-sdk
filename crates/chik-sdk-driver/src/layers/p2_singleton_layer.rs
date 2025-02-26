@@ -1,5 +1,5 @@
 use chik_protocol::{Bytes32, Coin};
-use chik_puzzles::{SINGLETON_LAUNCHER_HASH, SINGLETON_TOP_LAYER_V1_1_HASH};
+use chik_puzzles::singleton::{SINGLETON_LAUNCHER_PUZZLE_HASH, SINGLETON_TOP_LAYER_PUZZLE_HASH};
 use chik_sdk_types::{P2SingletonArgs, P2SingletonSolution, P2_SINGLETON_PUZZLE_HASH};
 use klvm_traits::FromKlvm;
 use klvm_utils::{ToTreeHash, TreeHash};
@@ -69,8 +69,8 @@ impl Layer for P2SingletonLayer {
 
         let args = P2SingletonArgs::from_klvm(allocator, puzzle.args)?;
 
-        if args.singleton_mod_hash != SINGLETON_TOP_LAYER_V1_1_HASH.into()
-            || args.launcher_puzzle_hash != SINGLETON_LAUNCHER_HASH.into()
+        if args.singleton_mod_hash != SINGLETON_TOP_LAYER_PUZZLE_HASH.into()
+            || args.launcher_puzzle_hash != SINGLETON_LAUNCHER_PUZZLE_HASH.into()
         {
             return Err(DriverError::InvalidSingletonStruct);
         }
@@ -109,7 +109,7 @@ impl ToTreeHash for P2SingletonLayer {
 #[cfg(test)]
 mod tests {
     use chik_protocol::Coin;
-    use chik_puzzle_types::{singleton::SingletonSolution, EveProof, Proof};
+    use chik_puzzles::{singleton::SingletonSolution, EveProof, Proof};
     use chik_sdk_test::Simulator;
     use chik_sdk_types::Conditions;
 
@@ -119,15 +119,15 @@ mod tests {
 
     #[test]
     fn test_p2_singleton_layer() -> anyhow::Result<()> {
-        let mut sim = Simulator::default();
+        let mut sim = Simulator::new();
         let ctx = &mut SpendContext::new();
 
-        let alice = sim.bls(2);
-        let p2 = StandardLayer::new(alice.pk);
+        let (sk, pk, puzzle_hash, coin) = sim.new_p2(2)?;
+        let p2 = StandardLayer::new(pk);
 
-        let launcher = Launcher::new(alice.coin.coin_id(), 1);
+        let launcher = Launcher::new(coin.coin_id(), 1);
         let launcher_id = launcher.coin().coin_id();
-        let (create_singleton, singleton) = launcher.spend(ctx, alice.puzzle_hash, ())?;
+        let (create_singleton, singleton) = launcher.spend(ctx, puzzle_hash, ())?;
 
         let p2_singleton = P2SingletonLayer::new(launcher_id);
         let p2_singleton_hash = p2_singleton.tree_hash().into();
@@ -135,19 +135,19 @@ mod tests {
         let memos = ctx.hint(launcher_id)?;
         p2.spend(
             ctx,
-            alice.coin,
+            coin,
             create_singleton.create_coin(p2_singleton_hash, 1, Some(memos)),
         )?;
 
-        let p2_coin = Coin::new(alice.coin.coin_id(), p2_singleton_hash, 1);
-        p2_singleton.spend_coin(ctx, p2_coin, alice.puzzle_hash)?;
+        let p2_coin = Coin::new(coin.coin_id(), p2_singleton_hash, 1);
+        p2_singleton.spend_coin(ctx, p2_coin, puzzle_hash)?;
 
         let memos = ctx.hint(launcher_id)?;
         let inner_solution = p2
             .spend_with_conditions(
                 ctx,
                 Conditions::new()
-                    .create_coin(alice.puzzle_hash, 1, Some(memos))
+                    .create_coin(puzzle_hash, 1, Some(memos))
                     .create_puzzle_announcement(p2_coin.coin_id().into()),
             )?
             .solution;
@@ -157,7 +157,7 @@ mod tests {
                 singleton,
                 SingletonSolution {
                     lineage_proof: Proof::Eve(EveProof {
-                        parent_parent_coin_info: alice.coin.coin_id(),
+                        parent_parent_coin_info: coin.coin_id(),
                         parent_amount: 1,
                     }),
                     amount: singleton.amount,
@@ -166,7 +166,7 @@ mod tests {
             )?;
         ctx.insert(singleton_spend);
 
-        sim.spend_coins(ctx.take(), &[alice.sk])?;
+        sim.spend_coins(ctx.take(), &[sk])?;
 
         Ok(())
     }

@@ -1,9 +1,7 @@
 use chik_protocol::{Bytes32, Coin, CoinSpend};
-use chik_puzzle_types::nft::NftIntermediateLauncherArgs;
-use chik_puzzles::SINGLETON_LAUNCHER_HASH;
+use chik_puzzles::{nft::NftIntermediateLauncherArgs, singleton::SINGLETON_LAUNCHER_PUZZLE_HASH};
 use chik_sdk_types::{announcement_id, Conditions};
-use chik_sha2::Sha256;
-use klvmr::Allocator;
+use klvmr::{sha2::Sha256, Allocator};
 
 use crate::{DriverError, SpendContext};
 
@@ -33,7 +31,7 @@ impl IntermediateLauncher {
 
         let launcher_coin = Coin::new(
             intermediate_coin.coin_id(),
-            SINGLETON_LAUNCHER_HASH.into(),
+            SINGLETON_LAUNCHER_PUZZLE_HASH.into(),
             1,
         );
 

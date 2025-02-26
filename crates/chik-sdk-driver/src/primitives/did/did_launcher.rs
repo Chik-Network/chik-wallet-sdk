@@ -1,5 +1,5 @@
 use chik_protocol::Bytes32;
-use chik_puzzle_types::{EveProof, Proof};
+use chik_puzzles::{EveProof, Proof};
 use chik_sdk_types::Conditions;
 use klvm_traits::{FromKlvm, ToKlvm};
 use klvm_utils::ToTreeHash;

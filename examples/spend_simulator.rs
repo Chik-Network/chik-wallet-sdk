@@ -1,6 +1,7 @@
 use chik_protocol::Coin;
+use chik_puzzles::standard::StandardArgs;
 use chik_sdk_driver::{SpendContext, StandardLayer};
-use chik_sdk_test::Simulator;
+use chik_sdk_test::{test_secret_key, Simulator};
 use chik_sdk_types::Conditions;
 
 fn main() -> anyhow::Result<()> {
@@ -8,27 +9,32 @@ fn main() -> anyhow::Result<()> {
     let mut sim = Simulator::new();
 
     // Setup the key, puzzle hash, and mint a coin.
-    let alice = sim.bls(1_000);
+    let sk = test_secret_key()?;
+    let pk = sk.public_key();
+    let p2 = StandardLayer::new(pk);
 
-    println!("Minted test coin with coin id {}", alice.coin.coin_id());
+    let puzzle_hash = StandardArgs::curry_tree_hash(pk).into();
+    let coin = sim.new_coin(puzzle_hash, 1_000);
+
+    println!("Minted test coin with coin id {}", coin.coin_id());
 
     // Create the spend context and a simple transaction.
     let ctx = &mut SpendContext::new();
 
     let conditions = Conditions::new()
-        .create_coin(alice.puzzle_hash, 900, None)
+        .create_coin(puzzle_hash, 900, None)
         .reserve_fee(100);
 
-    StandardLayer::new(alice.pk).spend(ctx, alice.coin, conditions)?;
+    p2.spend(ctx, coin, conditions)?;
 
-    let new_coin = Coin::new(alice.coin.coin_id(), alice.puzzle_hash, 900);
+    let new_coin = Coin::new(coin.coin_id(), puzzle_hash, 900);
 
     println!("Spent coin to create new coin {}", new_coin.coin_id());
 
     // Sign and submit the transaction to the simulator.
     // This will produce an error if the transaction is not successful.
     let coin_spends = ctx.take();
-    sim.spend_coins(coin_spends, &[alice.sk])?;
+    sim.spend_coins(coin_spends, &[sk])?;
 
     println!("Transaction was successful.");
 

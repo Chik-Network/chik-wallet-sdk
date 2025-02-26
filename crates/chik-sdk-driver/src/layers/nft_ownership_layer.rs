@@ -1,6 +1,7 @@
 use chik_protocol::Bytes32;
-use chik_puzzle_types::nft::{NftOwnershipLayerArgs, NftOwnershipLayerSolution};
-use chik_puzzles::NFT_OWNERSHIP_LAYER_HASH;
+use chik_puzzles::nft::{
+    NftOwnershipLayerArgs, NftOwnershipLayerSolution, NFT_OWNERSHIP_LAYER_PUZZLE_HASH,
+};
 use klvm_traits::FromKlvm;
 use klvm_utils::{ToTreeHash, TreeHash};
 use klvmr::{Allocator, NodePtr};
@@ -42,13 +43,13 @@ where
             return Ok(None);
         };
 
-        if puzzle.mod_hash != NFT_OWNERSHIP_LAYER_HASH.into() {
+        if puzzle.mod_hash != NFT_OWNERSHIP_LAYER_PUZZLE_HASH {
             return Ok(None);
         }
 
         let args = NftOwnershipLayerArgs::<NodePtr, NodePtr>::from_klvm(allocator, puzzle.args)?;
 
-        if args.mod_hash != NFT_OWNERSHIP_LAYER_HASH.into() {
+        if args.mod_hash != NFT_OWNERSHIP_LAYER_PUZZLE_HASH.into() {
             return Err(DriverError::InvalidModHash);
         }
 

@@ -161,50 +161,17 @@ impl Drop for PeerSimulator {
 
 #[cfg(test)]
 mod tests {
-    use chik_bls::{PublicKey, SecretKey, Signature};
+    use chik_bls::{DerivableKey, PublicKey, Signature};
     use chik_protocol::{
-        Bytes, CoinSpend, CoinStateFilters, CoinStateUpdate, ProtocolMessageTypes,
-        RespondCoinState, RespondPuzzleState, SpendBundle, TransactionAck,
+        Bytes, CoinSpend, CoinStateFilters, CoinStateUpdate, RespondCoinState, RespondPuzzleState,
+        SpendBundle,
     };
     use chik_sdk_types::{AggSigMe, CreateCoin, Memos, Remark};
-    use chik_traits::Streamable;
     use klvmr::NodePtr;
 
-    use crate::{sign_transaction, to_program, to_puzzle, BlsPair};
+    use crate::{coin_state_updates, test_secret_key, test_transaction, to_program, to_puzzle};
 
     use super::*;
-
-    fn coin_state_updates(receiver: &mut mpsc::Receiver<Message>) -> Vec<CoinStateUpdate> {
-        let mut items = Vec::new();
-        while let Ok(message) = receiver.try_recv() {
-            if message.msg_type != ProtocolMessageTypes::CoinStateUpdate {
-                continue;
-            }
-            items.push(CoinStateUpdate::from_bytes(&message.data).unwrap());
-        }
-        items
-    }
-
-    async fn test_transaction_raw(
-        peer: &Peer,
-        coin_spends: Vec<CoinSpend>,
-        secret_keys: &[SecretKey],
-    ) -> anyhow::Result<TransactionAck> {
-        let aggregated_signature = sign_transaction(&coin_spends, secret_keys)?;
-
-        Ok(peer
-            .send_transaction(SpendBundle::new(coin_spends, aggregated_signature))
-            .await?)
-    }
-
-    async fn test_transaction(peer: &Peer, coin_spends: Vec<CoinSpend>, secret_keys: &[SecretKey]) {
-        let ack = test_transaction_raw(peer, coin_spends, secret_keys)
-            .await
-            .expect("could not submit transaction");
-
-        assert_eq!(ack.error, None);
-        assert_eq!(ack.status, 1);
-    }
 
     #[tokio::test]
     async fn test_coin_state() -> anyhow::Result<()> {
@@ -282,7 +249,7 @@ mod tests {
     async fn test_bad_signature() -> anyhow::Result<()> {
         let sim = PeerSimulator::new().await?;
         let peer = sim.connect().await?;
-        let public_key = BlsPair::new(0).pk;
+        let public_key = test_secret_key()?.public_key();
 
         let (puzzle_hash, puzzle_reveal) = to_puzzle(1)?;
 
@@ -331,7 +298,8 @@ mod tests {
     async fn test_valid_signature() -> anyhow::Result<()> {
         let sim = PeerSimulator::new().await?;
         let peer = sim.connect().await?;
-        let pair = BlsPair::new(0);
+        let sk = test_secret_key()?;
+        let pk = sk.public_key();
 
         let (puzzle_hash, puzzle_reveal) = to_puzzle(1)?;
 
@@ -342,9 +310,9 @@ mod tests {
             vec![CoinSpend::new(
                 coin,
                 puzzle_reveal,
-                to_program([AggSigMe::new(pair.pk, b"Hello, world!".to_vec().into())])?,
+                to_program([AggSigMe::new(pk, b"Hello, world!".to_vec().into())])?,
             )],
-            &[pair.sk],
+            &[sk],
         )
         .await;
 
@@ -356,8 +324,11 @@ mod tests {
         let sim = PeerSimulator::new().await?;
         let peer = sim.connect().await?;
 
-        let alice = BlsPair::new(0);
-        let bob = BlsPair::new(1);
+        let sk1 = test_secret_key()?.derive_unhardened(0);
+        let pk1 = sk1.public_key();
+
+        let sk2 = test_secret_key()?.derive_unhardened(1);
+        let pk2 = sk2.public_key();
 
         let (puzzle_hash, puzzle_reveal) = to_puzzle(1)?;
 
@@ -369,11 +340,11 @@ mod tests {
                 coin,
                 puzzle_reveal,
                 to_program([
-                    AggSigMe::new(alice.pk, b"Hello, world!".to_vec().into()),
-                    AggSigMe::new(bob.pk, b"Goodbye, world!".to_vec().into()),
+                    AggSigMe::new(pk1, b"Hello, world!".to_vec().into()),
+                    AggSigMe::new(pk2, b"Goodbye, world!".to_vec().into()),
                 ])?,
             )],
-            &[alice.sk, bob.sk],
+            &[sk1, sk2],
         )
         .await;
 
