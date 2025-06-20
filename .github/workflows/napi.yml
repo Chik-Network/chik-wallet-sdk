@@ -60,7 +60,7 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: ${{ github.workspace }}/napi/pnpm-lock.yaml
+          cache-dependency-path: ${{ github.workspace }}/napi/pnpm-lock.yaml #不能删
 
       - name: Install
         uses: dtolnay/rust-toolchain@stable
@@ -156,7 +156,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
-          cache-dependency-path: napi/pnpm-lock.yaml
+          cache-dependency-path: ${{ github.workspace }}/napi/pnpm-lock.yaml #不能删
           architecture: ${{ matrix.settings.arch }}
 
       - name: Install dependencies
