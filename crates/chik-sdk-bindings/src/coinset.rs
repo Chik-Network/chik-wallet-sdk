@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use bindy::Result;
+use binky::Result;
 use chik_protocol::{Bytes32, SpendBundle};
 use chik_sdk_coinset::{
     AdditionsAndRemovalsResponse, BlockchainStateResponse, ChikRpcClient,

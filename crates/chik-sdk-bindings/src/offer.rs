@@ -1,4 +1,4 @@
-use bindy::Result;
+use binky::Result;
 use chik_protocol::SpendBundle;
 use chik_sdk_driver::Offer;
 

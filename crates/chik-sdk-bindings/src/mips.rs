@@ -8,7 +8,7 @@ pub use memos::*;
 pub use restrictions::*;
 pub use spend::*;
 
-use bindy::Result;
+use binky::Result;
 use chik_protocol::{Bytes32, Coin};
 use chik_sdk_driver as sdk;
 use chik_sdk_types::{puzzles::AddDelegatedPuzzleWrapper, Mod};

@@ -1,4 +1,4 @@
-use bindy::Result;
+use binky::Result;
 use chik_protocol::Bytes32;
 use chik_puzzle_types::LineageProof;
 use chik_sdk_driver::{Cat, CatInfo};

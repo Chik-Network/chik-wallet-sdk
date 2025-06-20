@@ -1,4 +1,4 @@
-use bindy::{Error, Result};
+use binky::{Error, Result};
 use chik_protocol::Bytes32;
 use chik_puzzle_types::{EveProof as EveProofRs, LineageProof, Proof as ProofRs};
 

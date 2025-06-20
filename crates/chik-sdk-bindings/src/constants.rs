@@ -1,6 +1,6 @@
 #![allow(clippy::wildcard_imports)]
 
-use bindy::Result;
+use binky::Result;
 use chik_protocol::Program;
 use chik_puzzles::*;
 use chik_sdk_types::puzzles::{

@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use bindy::Result;
+use binky::Result;
 use chik_bls::PublicKey;
 use chik_protocol::{Bytes, Bytes32};
 use chik_sdk_driver::SpendContext;

@@ -1,4 +1,4 @@
-use bindy::Result;
+use binky::Result;
 use chik_protocol::{Bytes, Bytes32};
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;

@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 
-use bindy::{FromRust, Pyo3Context};
+use binky::{FromRust, Pyo3Context};
 use num_bigint::BigInt;
 use pyo3::{
     exceptions::PyTypeError,
@@ -8,7 +8,7 @@ use pyo3::{
     types::{PyList, PyNone, PyTuple},
 };
 
-bindy_macro::bindy_pyo3!("bindings.json");
+binky_macro::binky_pyo3!("bindings.json");
 
 #[pymethods]
 impl Klvm {

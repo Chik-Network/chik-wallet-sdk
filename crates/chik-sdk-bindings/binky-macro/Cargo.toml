@@ -1,9 +1,9 @@
 [package]
-name = "bindy-macro"
+name = "binky-macro"
 version = "0.25.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "Macro for the Bindy generator."
+description = "Macro for the Binky generator."
 authors = ["Brandon Haggstrom <me@rigidnetwork.com>"]
 homepage = "https://github.com/Chik-Network/chik-wallet-sdk"
 repository = "https://github.com/Chik-Network/chik-wallet-sdk"

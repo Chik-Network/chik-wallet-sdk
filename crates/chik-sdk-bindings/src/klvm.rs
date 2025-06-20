@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use bindy::{Error, Result};
+use binky::{Error, Result};
 use chik_bls::PublicKey;
 use chik_protocol::{Bytes, Bytes32, Coin, CoinSpend, Program as SerializedProgram};
 use chik_sdk_driver::{Cat, HashedPtr, Launcher, SpendContext, StandardLayer, StreamedCat};

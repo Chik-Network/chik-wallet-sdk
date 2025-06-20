@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use bindy::Result;
+use binky::Result;
 use chik_bls::PublicKey;
 use chik_consensus::opcodes::{
     CREATE_COIN_ANNOUNCEMENT, CREATE_PUZZLE_ANNOUNCEMENT, RECEIVE_MESSAGE, SEND_MESSAGE,

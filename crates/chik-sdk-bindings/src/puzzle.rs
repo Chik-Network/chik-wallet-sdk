@@ -16,7 +16,7 @@ pub use streamed_cat::*;
 
 use std::sync::{Arc, Mutex};
 
-use bindy::Result;
+use binky::Result;
 use chik_protocol::{Bytes32, Coin};
 use chik_sdk_driver::{
     Cat, CatLayer, Clawback, CurriedPuzzle, HashedPtr, Layer, RawPuzzle, SpendContext,

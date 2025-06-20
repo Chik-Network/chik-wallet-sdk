@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use bindy::Result;
+use binky::Result;
 use chik_protocol::{Bytes32, Coin};
 use chik_sdk_driver::{Did as SdkDid, DidInfo as SdkDidInfo, HashedPtr, SpendContext};
 use klvm_utils::TreeHash;

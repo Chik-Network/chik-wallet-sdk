@@ -1,4 +1,4 @@
-use bindy::Result;
+use binky::Result;
 use chik_bls::{aggregate_verify, sign, verify, DerivableKey, PublicKey, SecretKey, Signature};
 use chik_protocol::{Bytes, Bytes32, Bytes48, Bytes96};
 use chik_puzzle_types::DeriveSynthetic;

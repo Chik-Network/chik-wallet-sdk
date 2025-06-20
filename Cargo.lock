@@ -211,7 +211,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "bindy"
+name = "binky"
 version = "0.25.0"
 dependencies = [
  "bech32",
@@ -236,7 +236,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "bindy-macro"
+name = "binky-macro"
 version = "0.25.0"
 dependencies = [
  "convert_case",
@@ -477,7 +477,7 @@ dependencies = [
 name = "chik-sdk-bindings"
 version = "0.25.0"
 dependencies = [
- "bindy",
+ "binky",
  "bip39",
  "chik-bls 0.25.0",
  "chik-consensus",
@@ -774,8 +774,8 @@ dependencies = [
 name = "chik-wallet-sdk-napi"
 version = "0.0.0"
 dependencies = [
- "bindy",
- "bindy-macro",
+ "binky",
+ "binky-macro",
  "chik-sdk-bindings",
  "napi",
  "napi-build",
@@ -788,8 +788,8 @@ dependencies = [
 name = "chik-wallet-sdk-py"
 version = "0.25.0"
 dependencies = [
- "bindy",
- "bindy-macro",
+ "binky",
+ "binky-macro",
  "chik-sdk-bindings",
  "num-bigint",
  "openssl",
@@ -802,8 +802,8 @@ dependencies = [
 name = "chik-wallet-sdk-wasm"
 version = "0.25.0"
 dependencies = [
- "bindy",
- "bindy-macro",
+ "binky",
+ "binky-macro",
  "chik-sdk-bindings",
  "getrandom 0.2.15",
  "js-sys",

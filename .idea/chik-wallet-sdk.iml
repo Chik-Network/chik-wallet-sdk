@@ -22,6 +22,8 @@
       <sourceFolder url="file://$MODULE_DIR$/crates/binky/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/chik-sdk-bindings/bindy-macro/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/chik-sdk-bindings/bindy/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/chik-sdk-bindings/binky-macro/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/chik-sdk-bindings/binky/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/chik-sdk-types/derive/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>

@@ -19,8 +19,8 @@ resolver = "2"
 members = [
     "crates/*",
     "crates/chik-sdk-types/derive",
-    "crates/chik-sdk-bindings/bindy",
-    "crates/chik-sdk-bindings/bindy-macro",
+    "crates/chik-sdk-bindings/binky",
+    "crates/chik-sdk-bindings/binky-macro",
     "napi",
     "wasm",
     "pyo3"
@@ -111,8 +111,8 @@ chik-sdk-derive = { version = "0.25.0", path = "./crates/chik-sdk-types/derive" 
 chik-sdk-utils = { version = "0.25.0", path = "./crates/chik-sdk-utils" }
 chik-sdk-coinset = { version = "0.25.0", path = "./crates/chik-sdk-coinset" }
 chik-sdk-bindings = { version = "0.25.0", path = "./crates/chik-sdk-bindings" }
-bindy = { version = "0.25.0", path = "./crates/chik-sdk-bindings/bindy" }
-bindy-macro = { version = "0.25.0", path = "./crates/chik-sdk-bindings/bindy-macro" }
+binky = { version = "0.25.0", path = "./crates/chik-sdk-bindings/binky" }
+binky-macro = { version = "0.25.0", path = "./crates/chik-sdk-bindings/binky-macro" }
 chik = "0.25.0"
 chik-ssl = "0.25.0"
 chik-protocol = "0.25.0"

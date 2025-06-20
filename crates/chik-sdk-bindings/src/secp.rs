@@ -1,4 +1,4 @@
-use bindy::Result;
+use binky::Result;
 use chik_protocol::{Bytes32, BytesImpl};
 use chik_secp::{
     K1PublicKey as K1PublicKeyRs, K1SecretKey as K1SecretKeyRs, K1Signature as K1SignatureRs,

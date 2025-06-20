@@ -1,4 +1,4 @@
-use bindy::Result;
+use binky::Result;
 use chik_bls::PublicKey;
 use chik_protocol::Bytes32;
 use chik_sdk_driver::{member_puzzle_hash, MofN};

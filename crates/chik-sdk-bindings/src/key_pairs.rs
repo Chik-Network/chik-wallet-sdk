@@ -1,4 +1,4 @@
-use bindy::Result;
+use binky::Result;
 use chik_bls::{PublicKey, SecretKey};
 use chik_protocol::{Bytes32, Coin};
 

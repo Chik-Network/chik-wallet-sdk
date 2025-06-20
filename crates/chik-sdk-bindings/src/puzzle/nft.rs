@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use bindy::Result;
+use binky::Result;
 use chik_protocol::{Bytes32, Coin};
 use chik_puzzle_types::nft::NftMetadata;
 use chik_sdk_driver::{

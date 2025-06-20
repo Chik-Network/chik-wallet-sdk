@@ -14,8 +14,8 @@ test = false
 pyo3 = { workspace = true, features = ["num-bigint", "multiple-pymethods", "abi3-py38", "experimental-async"] }
 pyo3-async-runtimes = { workspace = true, features = ["tokio-runtime"] }
 chik-sdk-bindings = { workspace = true, features = ["pyo3"] }
-bindy = { workspace = true, features = ["pyo3"] }
-bindy-macro = { workspace = true }
+binky = { workspace = true, features = ["pyo3"] }
+binky-macro = { workspace = true }
 num-bigint = { workspace = true }
 
 [target.aarch64-unknown-linux-gnu.dependencies]
