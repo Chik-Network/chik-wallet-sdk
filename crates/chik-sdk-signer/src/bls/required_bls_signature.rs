@@ -1,7 +1,7 @@
 use chik_bls::PublicKey;
-use chik_consensus::gen::make_aggsig_final_message::u64_to_bytes;
+use chik_consensus::make_aggsig_final_message::u64_to_bytes;
 use chik_protocol::{Bytes, Bytes32, Coin};
-use chik_sdk_types::{AggSig, AggSigKind};
+use chik_sdk_types::conditions::{AggSig, AggSigKind};
 
 use super::AggSigConstants;
 

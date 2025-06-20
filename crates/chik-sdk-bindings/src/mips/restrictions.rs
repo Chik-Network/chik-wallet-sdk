@@ -1,9 +1,12 @@
-use binky::Result;
+use bindy::Result;
 use chik_protocol::Bytes32;
 use chik_sdk_driver as sdk;
 use chik_sdk_types::{
-    Force1of2RestrictedVariable, Mod, PreventConditionOpcode, Timelock,
-    PREVENT_MULTIPLE_CREATE_COINS_PUZZLE_HASH,
+    puzzles::{
+        Force1of2RestrictedVariable, PreventConditionOpcode, Timelock,
+        PREVENT_MULTIPLE_CREATE_COINS_PUZZLE_HASH,
+    },
+    Mod,
 };
 use klvm_utils::TreeHash;
 
@@ -82,7 +85,7 @@ pub fn prevent_multiple_create_coins_restriction() -> Result<Restriction> {
     })
 }
 
-pub fn prevent_side_effects_restriction() -> Result<Vec<Restriction>> {
+pub fn prevent_vault_side_effects_restriction() -> Result<Vec<Restriction>> {
     Ok(vec![
         prevent_condition_opcode_restriction(60)?,
         prevent_condition_opcode_restriction(62)?,

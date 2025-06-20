@@ -1,12 +1,11 @@
-#![allow(unsafe_code)]
 #![allow(clippy::wildcard_imports)]
 #![allow(clippy::too_many_arguments)]
 
-use binky::{FromRust, IntoRust, NapiParamContext, NapiReturnContext};
+use bindy::{FromRust, IntoRust, NapiParamContext, NapiReturnContext};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-binky_macro::binky_napi!("bindings.json");
+bindy_macro::bindy_napi!("bindings.json");
 
 #[napi]
 impl Klvm {
@@ -19,17 +18,9 @@ impl Klvm {
     }
 
     #[napi]
-    pub fn int(&self, env: Env, value: f64) -> Result<Program> {
+    pub fn bound_checked_number(&self, env: Env, value: f64) -> Result<Program> {
         Ok(Program::from_rust(
             self.0.f64(value)?,
-            &NapiReturnContext(env),
-        )?)
-    }
-
-    #[napi]
-    pub fn big_int(&self, env: Env, value: BigInt) -> Result<Program> {
-        Ok(Program::from_rust(
-            self.0.big_int(value.into_rust(&NapiParamContext)?)?,
             &NapiReturnContext(env),
         )?)
     }
@@ -38,16 +29,8 @@ impl Klvm {
 #[napi]
 impl Program {
     #[napi]
-    pub fn to_int(&self) -> Result<Option<f64>> {
+    pub fn to_bound_checked_number(&self) -> Result<Option<f64>> {
         Ok(self.0.to_small_int()?)
-    }
-
-    #[napi]
-    pub fn to_big_int(&self, env: Env) -> Result<Option<BigInt>> {
-        Ok(Option::<BigInt>::from_rust(
-            self.0.to_big_int()?,
-            &NapiReturnContext(env),
-        )?)
     }
 }
 
@@ -109,16 +92,32 @@ type Value2 = Either26<
     Value3,
 >;
 
-type Value3 = Either<ClassInstance<NftMetadata>, ClassInstance<CurriedProgram>>;
+type Value3 = Either15<
+    ClassInstance<NftMetadata>,
+    ClassInstance<CurriedProgram>,
+    ClassInstance<MipsMemo>,
+    ClassInstance<InnerPuzzleMemo>,
+    ClassInstance<RestrictionMemo>,
+    ClassInstance<WrapperMemo>,
+    ClassInstance<Force1of2RestrictedVariableMemo>,
+    ClassInstance<MemoKind>,
+    ClassInstance<MemberMemo>,
+    ClassInstance<MofNMemo>,
+    ClassInstance<MeltSingleton>,
+    ClassInstance<TransferNft>,
+    ClassInstance<RunCatTail>,
+    ClassInstance<UpdateNftMetadata>,
+    ClassInstance<UpdateDataStoreMerkleRoot>,
+>;
 
 fn alloc(
     env: Env,
     klvm: &chik_sdk_bindings::Klvm,
     value: Value,
-) -> binky::Result<chik_sdk_bindings::Program> {
+) -> bindy::Result<chik_sdk_bindings::Program> {
     match value {
         Value::A(value) => klvm.f64(value),
-        Value::B(value) => klvm.big_int(value.into_rust(&NapiParamContext)?),
+        Value::B(value) => klvm.int(value.into_rust(&NapiParamContext)?),
         Value::C(value) => klvm.bool(value),
         Value::D(value) => klvm.string(value),
         Value::E(value) => klvm.atom(value.to_vec().into()),
@@ -186,6 +185,29 @@ fn alloc(
             Value2::Z(value) => match value {
                 Value3::A(value) => klvm.nft_metadata(value.0.clone()),
                 Value3::B(value) => value.0.program.curry(value.0.args.clone()),
+                Value3::C(value) => klvm.mips_memo(value.0.clone()),
+                Value3::D(value) => klvm.inner_puzzle_memo(value.0.clone()),
+                Value3::E(value) => klvm.restriction_memo(value.0.clone()),
+                Value3::F(value) => klvm.wrapper_memo(value.0.clone()),
+                Value3::G(value) => klvm.force_1_of_2_restricted_variable_memo(value.0.clone()),
+                Value3::H(value) => klvm.memo_kind(value.0.clone()),
+                Value3::I(value) => klvm.member_memo(value.0.clone()),
+                Value3::J(value) => klvm.m_of_n_memo(value.0.clone()),
+                Value3::K(_value) => klvm.melt_singleton(),
+                Value3::L(value) => klvm.transfer_nft(
+                    value.0.launcher_id,
+                    value.0.trade_prices.clone(),
+                    value.0.singleton_inner_puzzle_hash,
+                ),
+                Value3::M(value) => {
+                    klvm.run_cat_tail(value.0.program.clone(), value.0.solution.clone())
+                }
+                Value3::N(value) => klvm.update_nft_metadata(
+                    value.0.updater_puzzle_reveal.clone(),
+                    value.0.updater_solution.clone(),
+                ),
+                Value3::O(value) => klvm
+                    .update_data_store_merkle_root(value.0.new_merkle_root, value.0.memos.clone()),
             },
         },
     }

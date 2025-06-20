@@ -77,13 +77,17 @@ impl Vault {
 
 #[cfg(test)]
 mod tests {
+    use chik_puzzle_types::Memos;
     use chik_sdk_test::{K1Pair, Simulator};
-    use chik_sdk_types::{Conditions, Mod, Secp256k1Member, Secp256k1MemberSolution};
+    use chik_sdk_types::{
+        puzzles::{K1Member, K1MemberSolution},
+        Conditions, Mod,
+    };
     use chik_secp::{K1SecretKey, K1Signature};
     use chik_sha2::Sha256;
     use rstest::rstest;
 
-    use crate::{Launcher, MemberSpend, MofN, StandardLayer};
+    use crate::{InnerPuzzleSpend, Launcher, MofN, StandardLayer};
 
     use super::*;
 
@@ -122,24 +126,21 @@ mod tests {
         let ctx = &mut SpendContext::new();
 
         let k1 = K1Pair::default();
-        let custody = Secp256k1Member::new(k1.pk);
+        let custody = K1Member::new(k1.pk);
         let custody_hash = Vault::custody_hash(0, Vec::new(), custody.curry_tree_hash());
 
         let vault = mint_vault(&mut sim, ctx, custody_hash)?;
 
-        let conditions = Conditions::new().create_coin(vault.custody_hash.into(), 1, None);
+        let conditions = Conditions::new().create_coin(vault.custody_hash.into(), 1, Memos::None);
         let mut spend = MipsSpend::new(ctx.delegated_spend(conditions)?);
 
         let signature = k1_sign(ctx, &vault, &spend, &k1.sk)?;
         let k1_puzzle = ctx.curry(custody)?;
-        let k1_solution = ctx.alloc(&Secp256k1MemberSolution::new(
-            vault.coin.coin_id(),
-            signature,
-        ))?;
+        let k1_solution = ctx.alloc(&K1MemberSolution::new(vault.coin.coin_id(), signature))?;
 
         spend.members.insert(
             custody_hash,
-            MemberSpend::new(0, Vec::new(), Spend::new(k1_puzzle, k1_solution)),
+            InnerPuzzleSpend::new(0, Vec::new(), Spend::new(k1_puzzle, k1_solution)),
         );
 
         vault.spend(ctx, &spend)?;
@@ -166,10 +167,7 @@ mod tests {
 
         let keys = K1Pair::range_vec(key_count);
 
-        let members = keys
-            .iter()
-            .map(|k| Secp256k1Member::new(k.pk))
-            .collect::<Vec<_>>();
+        let members = keys.iter().map(|k| K1Member::new(k.pk)).collect::<Vec<_>>();
 
         let hashes = members
             .iter()
@@ -182,12 +180,13 @@ mod tests {
         let mut vault = mint_vault(&mut sim, ctx, custody_hash)?;
 
         for start in 0..key_count {
-            let conditions = Conditions::new().create_coin(vault.custody_hash.into(), 1, None);
+            let conditions =
+                Conditions::new().create_coin(vault.custody_hash.into(), 1, Memos::None);
             let mut spend = MipsSpend::new(ctx.delegated_spend(conditions)?);
 
             spend.members.insert(
                 custody_hash,
-                MemberSpend::m_of_n(0, Vec::new(), custody.required, custody.items.clone()),
+                InnerPuzzleSpend::m_of_n(0, Vec::new(), custody.required, custody.items.clone()),
             );
 
             let mut i = start;
@@ -196,14 +195,12 @@ mod tests {
                 let signature = k1_sign(ctx, &vault, &spend, &keys[i].sk)?;
 
                 let k1_puzzle = ctx.curry(members[i])?;
-                let k1_solution = ctx.alloc(&Secp256k1MemberSolution::new(
-                    vault.coin.coin_id(),
-                    signature,
-                ))?;
+                let k1_solution =
+                    ctx.alloc(&K1MemberSolution::new(vault.coin.coin_id(), signature))?;
 
                 spend.members.insert(
                     hashes[i],
-                    MemberSpend::new(0, Vec::new(), Spend::new(k1_puzzle, k1_solution)),
+                    InnerPuzzleSpend::new(0, Vec::new(), Spend::new(k1_puzzle, k1_solution)),
                 );
 
                 i += 1;

@@ -1,4 +1,4 @@
-use binky::Result;
+use bindy::Result;
 use chik_protocol::{Bytes, Bytes32};
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -16,7 +16,7 @@ pub fn bytes_equal(lhs: Bytes, rhs: Bytes) -> Result<bool> {
     Ok(lhs == rhs)
 }
 
-pub fn tree_hash_atom(atom: Bytes32) -> Result<Bytes32> {
+pub fn tree_hash_atom(atom: Bytes) -> Result<Bytes32> {
     Ok(klvm_utils::tree_hash_atom(&atom).into())
 }
 

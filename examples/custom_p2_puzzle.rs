@@ -1,5 +1,6 @@
 use chik_bls::PublicKey;
 use chik_protocol::{Coin, CoinSpend};
+use chik_puzzle_types::Memos;
 use chik_sdk_driver::{DriverError, Spend, SpendContext};
 use chik_sdk_test::Simulator;
 use chik_sdk_types::Conditions;
@@ -127,7 +128,7 @@ fn main() -> anyhow::Result<()> {
     let ctx = &mut SpendContext::new();
 
     let conditions = Conditions::new()
-        .create_coin(alice.puzzle_hash, 900, None)
+        .create_coin(alice.puzzle_hash, 900, Memos::None)
         .reserve_fee(100);
 
     ctx.spend_custom_coin(alice.coin, alice.pk, conditions)?;

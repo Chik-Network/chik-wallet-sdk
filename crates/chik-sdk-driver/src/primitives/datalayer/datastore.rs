@@ -2,14 +2,17 @@ use chik_protocol::{Bytes, Bytes32, Coin, CoinSpend};
 use chik_puzzle_types::{
     nft::{NftStateLayerArgs, NftStateLayerSolution},
     singleton::{LauncherSolution, SingletonArgs, SingletonSolution},
-    EveProof, LineageProof, Proof,
+    EveProof, LineageProof, Memos, Proof,
 };
 use chik_puzzles::{NFT_STATE_LAYER_HASH, SINGLETON_LAUNCHER_HASH};
 use chik_sdk_types::{
-    run_puzzle, CreateCoin, DelegationLayerArgs, DelegationLayerSolution, NewMetadataInfo,
-    NewMetadataOutput, DELEGATION_LAYER_PUZZLE_HASH, DL_METADATA_UPDATER_PUZZLE_HASH,
+    conditions::{CreateCoin, NewMetadataInfo, NewMetadataOutput, UpdateNftMetadata},
+    puzzles::{
+        DelegationLayerArgs, DelegationLayerSolution, DELEGATION_LAYER_PUZZLE_HASH,
+        DL_METADATA_UPDATER_PUZZLE_HASH,
+    },
+    run_puzzle, Condition,
 };
-use chik_sdk_types::{Condition, UpdateNftMetadata};
 use klvm_traits::{FromKlvm, FromKlvmError, ToKlvm};
 use klvm_utils::{tree_hash, CurriedProgram, ToTreeHash, TreeHash};
 use klvmr::{Allocator, NodePtr};
@@ -68,7 +71,7 @@ where
             let layers = self.info.clone().into_layers_with_delegation_layer(ctx)?;
             let puzzle_ptr = layers.construct_puzzle(ctx)?;
 
-            let delegated_puzzle_hash = tree_hash(&ctx.allocator, inner_spend.puzzle);
+            let delegated_puzzle_hash = ctx.tree_hash(inner_spend.puzzle);
 
             let tree = get_merkle_tree(ctx, self.info.delegated_puzzles)?;
 
@@ -377,7 +380,10 @@ where
 
         let inner_memos = Vec::<Bytes>::from_klvm(
             allocator,
-            inner_create_coin_condition.memos.unwrap_or_default().value,
+            match inner_create_coin_condition.memos {
+                Memos::Some(memos) => memos,
+                Memos::None => NodePtr::NIL,
+            },
         )?;
 
         if inner_memos.len() > 1 {
@@ -550,7 +556,7 @@ impl<M> DataStore<M> {
         Ok(Condition::CreateCoin(CreateCoin {
             amount: 1,
             puzzle_hash: new_puzzle_hash,
-            memos: Some(ctx.memos(&if hint_delegated_puzzles {
+            memos: ctx.memos(&if hint_delegated_puzzles {
                 Self::get_recreation_memos(
                     launcher_id,
                     new_inner_puzzle_hash.into(),
@@ -558,7 +564,7 @@ impl<M> DataStore<M> {
                 )
             } else {
                 vec![launcher_id.into()]
-            })?),
+            })?,
         }))
     }
 
@@ -580,7 +586,7 @@ impl<M> DataStore<M> {
                 conditions: (),
             },
         }
-        .to_klvm(&mut ctx.allocator)?;
+        .to_klvm(ctx)?;
 
         Ok(Condition::Other(new_metadata_condition))
     }
@@ -590,12 +596,10 @@ impl<M> DataStore<M> {
 #[allow(clippy::too_many_arguments)]
 #[cfg(test)]
 pub mod tests {
-    use core::panic;
-
     use chik_bls::PublicKey;
-    use chik_puzzle_types::standard::StandardArgs;
+    use chik_puzzle_types::{standard::StandardArgs, Memos};
     use chik_sdk_test::{BlsPair, Simulator};
-    use chik_sdk_types::{Conditions, MeltSingleton, Memos, UpdateDataStoreMerkleRoot};
+    use chik_sdk_types::{conditions::UpdateDataStoreMerkleRoot, Conditions};
     use chik_sha2::Sha256;
     use rstest::rstest;
 
@@ -700,8 +704,7 @@ pub mod tests {
         let spends = ctx.take();
         for spend in spends {
             if spend.coin.coin_id() == datastore.info.launcher_id {
-                let new_datastore =
-                    DataStore::from_spend(&mut ctx.allocator, &spend, &[])?.unwrap();
+                let new_datastore = DataStore::from_spend(ctx, &spend, &[])?.unwrap();
 
                 assert_eq!(datastore, new_datastore);
             }
@@ -711,7 +714,7 @@ pub mod tests {
 
         let datastore_inner_spend = alice_p2.spend_with_conditions(
             ctx,
-            Conditions::new().create_coin(alice.puzzle_hash, 1, None),
+            Conditions::new().create_coin(alice.puzzle_hash, 1, Memos::None),
         )?;
 
         let old_datastore_coin = datastore.coin;
@@ -747,10 +750,10 @@ pub mod tests {
         let ctx = &mut SpendContext::new();
 
         let admin_puzzle = ctx.curry(StandardArgs::new(admin.pk))?;
-        let admin_puzzle_hash = tree_hash(&ctx.allocator, admin_puzzle);
+        let admin_puzzle_hash = ctx.tree_hash(admin_puzzle);
 
         let writer_inner_puzzle = ctx.curry(StandardArgs::new(writer.pk))?;
-        let writer_inner_puzzle_hash = tree_hash(&ctx.allocator, writer_inner_puzzle);
+        let writer_inner_puzzle_hash = ctx.tree_hash(writer_inner_puzzle);
 
         let admin_delegated_puzzle = DelegatedPuzzle::Admin(admin_puzzle_hash);
         let writer_delegated_puzzle = DelegatedPuzzle::Writer(writer_inner_puzzle_hash);
@@ -772,8 +775,7 @@ pub mod tests {
         let spends = ctx.take();
         for spend in spends {
             if spend.coin.coin_id() == datastore.info.launcher_id {
-                let new_datastore =
-                    DataStore::from_spend(&mut ctx.allocator, &spend, &[])?.unwrap();
+                let new_datastore = DataStore::from_spend(ctx, &spend, &[])?.unwrap();
 
                 assert_eq!(datastore, new_datastore);
             }
@@ -798,7 +800,7 @@ pub mod tests {
         let new_spend = datastore.clone().spend(ctx, inner_spend)?;
 
         let datastore = DataStore::<DataStoreMetadata>::from_spend(
-            &mut ctx.allocator,
+            ctx,
             &new_spend,
             &datastore.info.delegated_puzzles,
         )?
@@ -812,15 +814,14 @@ pub mod tests {
         let new_merkle_tree = get_merkle_tree(ctx, delegated_puzzles.clone())?;
         let new_merkle_root = new_merkle_tree.root();
 
-        let new_merkle_root_condition = UpdateDataStoreMerkleRoot {
+        let new_merkle_root_condition = ctx.alloc(&UpdateDataStoreMerkleRoot {
             new_merkle_root,
             memos: DataStore::<DataStoreMetadata>::get_recreation_memos(
                 datastore.info.launcher_id,
                 owner_puzzle_hash.into(),
                 delegated_puzzles.clone(),
             ),
-        }
-        .to_klvm(&mut ctx.allocator)?;
+        })?;
 
         let inner_spend = StandardLayer::new(admin.pk).spend_with_conditions(
             ctx,
@@ -829,7 +830,7 @@ pub mod tests {
         let new_spend = datastore.clone().spend(ctx, inner_spend)?;
 
         let datastore = DataStore::<DataStoreMetadata>::from_spend(
-            &mut ctx.allocator,
+            ctx,
             &new_spend,
             &datastore.info.delegated_puzzles,
         )?
@@ -847,7 +848,7 @@ pub mod tests {
         let new_spend = datastore.clone().spend(ctx, inner_datastore_spend)?;
 
         let new_datastore = DataStore::<DataStoreMetadata>::from_spend(
-            &mut ctx.allocator,
+            ctx,
             &new_spend,
             &datastore.info.delegated_puzzles,
         )?
@@ -886,8 +887,7 @@ pub mod tests {
             .spend(ctx, datastore_remove_delegation_layer_inner_spend)?;
 
         let new_datastore =
-            DataStore::<DataStoreMetadata>::from_spend(&mut ctx.allocator, &new_spend, &[])?
-                .unwrap();
+            DataStore::<DataStoreMetadata>::from_spend(ctx, &new_spend, &[])?.unwrap();
         ctx.insert(new_spend);
 
         assert!(new_datastore.info.delegated_puzzles.is_empty());
@@ -1020,15 +1020,14 @@ pub mod tests {
 
             let new_merkle_tree = get_merkle_tree(ctx, dst_delegated_puzzles.clone())?;
 
-            let new_merkle_root_condition = UpdateDataStoreMerkleRoot {
+            let new_merkle_root_condition = ctx.alloc(&UpdateDataStoreMerkleRoot {
                 new_merkle_root: new_merkle_tree.root(),
                 memos: DataStore::<DataStoreMetadata>::get_recreation_memos(
                     src_datastore.info.launcher_id,
                     owner_puzzle_hash.into(),
                     dst_delegated_puzzles.clone(),
                 ),
-            }
-            .to_klvm(&mut ctx.allocator)?;
+            })?;
 
             admin_inner_output =
                 admin_inner_output.with(Condition::Other(new_merkle_root_condition));
@@ -1048,7 +1047,7 @@ pub mod tests {
         let new_spend = src_datastore.clone().spend(ctx, inner_datastore_spend)?;
 
         let dst_datastore = DataStore::<DataStoreMetadata>::from_spend(
-            &mut ctx.allocator,
+            ctx,
             &new_spend,
             &src_datastore.info.delegated_puzzles,
         )?
@@ -1228,7 +1227,7 @@ pub mod tests {
         let new_spend = src_datastore.clone().spend(ctx, inner_datastore_spend)?;
 
         let dst_datastore = DataStore::<DataStoreMetadata>::from_spend(
-            &mut ctx.allocator,
+            ctx,
             &new_spend,
             &src_datastore.info.delegated_puzzles,
         )?
@@ -1375,7 +1374,7 @@ pub mod tests {
         let new_spend = src_datastore.clone().spend(ctx, inner_spend)?;
 
         let dst_datastore = DataStore::<DataStoreMetadata>::from_spend(
-            &mut ctx.allocator,
+            ctx,
             &new_spend,
             &src_datastore.info.delegated_puzzles,
         )?
@@ -1495,12 +1494,8 @@ pub mod tests {
             .spend(ctx)?;
         let new_spend = src_datastore.clone().spend(ctx, inner_datastore_spend)?;
 
-        let dst_datastore = DataStore::from_spend(
-            &mut ctx.allocator,
-            &new_spend,
-            &src_datastore.info.delegated_puzzles,
-        )?
-        .unwrap();
+        let dst_datastore =
+            DataStore::from_spend(ctx, &new_spend, &src_datastore.info.delegated_puzzles)?.unwrap();
         ctx.insert(new_spend);
 
         assert_eq!(src_datastore.info, dst_datastore.info);
@@ -1628,9 +1623,7 @@ pub mod tests {
         StandardLayer::new(owner.pk).spend(ctx, coin, launch_singleton)?;
 
         // owner melts
-        let output_conds = Conditions::new().with(Condition::Other(
-            MeltSingleton {}.to_klvm(&mut ctx.allocator)?,
-        ));
+        let output_conds = Conditions::new().melt_singleton();
         let inner_datastore_spend =
             StandardLayer::new(owner.pk).spend_with_conditions(ctx, output_conds)?;
 
@@ -1727,7 +1720,7 @@ pub mod tests {
             Conditions::new().with(Condition::CreateCoin(CreateCoin {
                 puzzle_hash: attacker_puzzle_hash.into(),
                 amount: 1,
-                memos: None,
+                memos: Memos::None,
             })),
         )?;
 
@@ -1779,9 +1772,7 @@ pub mod tests {
         StandardLayer::new(owner.pk).spend(ctx, coin, launch_singleton)?;
 
         // attacker tries to melt the coin via delegated puzzle
-        let conds = Conditions::new().with(Condition::Other(
-            MeltSingleton {}.to_klvm(&mut ctx.allocator)?,
-        ));
+        let conds = Conditions::new().melt_singleton();
         let inner_datastore_spend = puzzle.get_spend(ctx, attacker.pk, conds)?;
 
         let new_spend = src_datastore.spend(ctx, inner_datastore_spend)?;
@@ -1814,13 +1805,10 @@ pub mod tests {
 
         let ctx = &mut SpendContext::new();
 
-        let condition_output = Conditions::new().with(Condition::Other(
-            UpdateDataStoreMerkleRoot {
-                new_merkle_root: new_merkle_root.value(),
-                memos: memos.into_iter().map(|m| m.value().into()).collect(),
-            }
-            .to_klvm(&mut ctx.allocator)?,
-        ));
+        let condition_output = Conditions::new().update_data_store_merkle_root(
+            new_merkle_root.value(),
+            memos.into_iter().map(|m| m.value().into()).collect(),
+        );
 
         let spend = test_puzzle.get_spend(ctx, attacker.pk, condition_output)?;
 
@@ -1861,26 +1849,23 @@ pub mod tests {
 
         let ctx = &mut SpendContext::new();
 
-        let new_metadata_condition = Condition::Other(
-            UpdateNftMetadata {
-                updater_puzzle_reveal: 11,
-                updater_solution: NewMetadataOutput {
-                    metadata_info: NewMetadataInfo {
-                        new_metadata: DataStoreMetadata::root_hash_only(new_root_hash.value()),
-                        new_updater_puzzle_hash: new_updater_ph.into(),
-                    },
-                    conditions: if output_conditions {
-                        vec![CreateCoin::<NodePtr> {
-                            puzzle_hash: [0; 32].into(),
-                            amount: 1,
-                            memos: None,
-                        }]
-                    } else {
-                        vec![]
-                    },
+        let new_metadata_condition = Condition::update_nft_metadata(
+            ctx.alloc(&11)?,
+            ctx.alloc(&NewMetadataOutput {
+                metadata_info: NewMetadataInfo {
+                    new_metadata: DataStoreMetadata::root_hash_only(new_root_hash.value()),
+                    new_updater_puzzle_hash: new_updater_ph.into(),
                 },
-            }
-            .to_klvm(&mut ctx.allocator)?,
+                conditions: if output_conditions {
+                    vec![CreateCoin::<NodePtr> {
+                        puzzle_hash: [0; 32].into(),
+                        amount: 1,
+                        memos: Memos::None,
+                    }]
+                } else {
+                    vec![]
+                },
+            })?,
         );
 
         let inner_spend = puzzle.get_spend(
@@ -2001,11 +1986,7 @@ pub mod tests {
         let datastore_from_launcher = spends
             .into_iter()
             .find(|spend| spend.coin.coin_id() == eve_coin.parent_coin_info)
-            .map(|spend| {
-                DataStore::from_spend(&mut ctx.allocator, &spend, &[])
-                    .unwrap()
-                    .unwrap()
-            })
+            .map(|spend| DataStore::from_spend(ctx, &spend, &[]).unwrap().unwrap())
             .expect("expected launcher spend");
 
         assert_eq!(
@@ -2060,11 +2041,11 @@ pub mod tests {
         inner_spend_conditions = inner_spend_conditions.with(Condition::CreateCoin(CreateCoin {
             puzzle_hash: new_inner_ph,
             amount: 1,
-            memos: Memos::some(ctx.alloc(&[
+            memos: ctx.memos(&[
                 launcher_coin.coin_id(),
                 second_root_hash.value(),
                 new_inner_ph,
-            ])?),
+            ])?,
         }));
 
         let inner_spend =
@@ -2072,7 +2053,7 @@ pub mod tests {
         let spend = datastore_from_launcher.clone().spend(ctx, inner_spend)?;
 
         let new_datastore = DataStore::<DataStoreMetadata>::from_spend(
-            &mut ctx.allocator,
+            ctx,
             &spend,
             &datastore_from_launcher.info.delegated_puzzles,
         )?

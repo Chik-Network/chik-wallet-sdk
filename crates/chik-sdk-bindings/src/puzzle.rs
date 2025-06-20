@@ -1,8 +1,29 @@
-use binky::Result;
-use chik_protocol::Bytes32;
-use chik_sdk_driver::{CurriedPuzzle, HashedPtr, RawPuzzle};
+mod cat;
+mod clawback;
+mod clawback_v2;
+mod did;
+mod nft;
+mod streamed_cat;
 
-use crate::{Coin, Nft, NftInfo, ParsedNft, Program};
+pub use cat::*;
+use chik_bls::PublicKey;
+use chik_puzzle_types::{cat::CatArgs, standard::StandardArgs};
+pub use clawback::*;
+pub use clawback_v2::*;
+pub use did::*;
+pub use nft::*;
+pub use streamed_cat::*;
+
+use std::sync::{Arc, Mutex};
+
+use bindy::Result;
+use chik_protocol::{Bytes32, Coin};
+use chik_sdk_driver::{
+    Cat, CatLayer, Clawback, CurriedPuzzle, HashedPtr, Layer, RawPuzzle, SpendContext,
+    StreamingPuzzleInfo,
+};
+
+use crate::{AsProgram, Program};
 
 #[derive(Clone)]
 pub struct Puzzle {
@@ -13,44 +34,83 @@ pub struct Puzzle {
 }
 
 impl Puzzle {
+    pub(crate) fn new(ctx: &Arc<Mutex<SpendContext>>, value: chik_sdk_driver::Puzzle) -> Self {
+        match value {
+            chik_sdk_driver::Puzzle::Curried(curried) => Puzzle {
+                puzzle_hash: curried.curried_puzzle_hash.into(),
+                program: Program(ctx.clone(), curried.curried_ptr),
+                mod_hash: curried.mod_hash.into(),
+                args: Some(Program(ctx.clone(), curried.args)),
+            },
+            chik_sdk_driver::Puzzle::Raw(raw) => Puzzle {
+                puzzle_hash: raw.puzzle_hash.into(),
+                program: Program(ctx.clone(), raw.ptr),
+                mod_hash: raw.puzzle_hash.into(),
+                args: None,
+            },
+        }
+    }
+
+    pub fn parse_cat(&self) -> Result<Option<ParsedCat>> {
+        let puzzle = chik_sdk_driver::Puzzle::from(self.clone());
+        let ctx = self.program.0.lock().unwrap();
+
+        let Some(cat) = CatLayer::<chik_sdk_driver::Puzzle>::parse_puzzle(&ctx, puzzle)? else {
+            return Ok(None);
+        };
+
+        Ok(Some(ParsedCat {
+            asset_id: cat.asset_id,
+            p2_puzzle: Self::new(&self.program.0, cat.inner_puzzle),
+        }))
+    }
+
+    pub fn parse_child_cats(
+        &self,
+        parent_coin: Coin,
+        parent_solution: Program,
+    ) -> Result<Option<Vec<Cat>>> {
+        let mut ctx = self.program.0.lock().unwrap();
+
+        let parent_puzzle = chik_sdk_driver::Puzzle::from(self.clone());
+
+        Ok(Cat::parse_children(
+            &mut ctx,
+            parent_coin,
+            parent_puzzle,
+            parent_solution.1,
+        )?)
+    }
+
     pub fn parse_nft(&self) -> Result<Option<ParsedNft>> {
         let puzzle = chik_sdk_driver::Puzzle::from(self.clone());
 
-        let ctx = self.program.0.read().unwrap();
+        let ctx = self.program.0.lock().unwrap();
 
         let Some((nft_info, p2_puzzle)) =
-            chik_sdk_driver::NftInfo::<HashedPtr>::parse(&ctx.allocator, puzzle)?
+            chik_sdk_driver::NftInfo::<HashedPtr>::parse(&ctx, puzzle)?
         else {
             return Ok(None);
         };
 
         Ok(Some(ParsedNft {
-            info: NftInfo {
-                launcher_id: nft_info.launcher_id,
-                metadata: Program(self.program.0.clone(), nft_info.metadata.ptr()),
-                metadata_updater_puzzle_hash: nft_info.metadata_updater_puzzle_hash,
-                current_owner: nft_info.current_owner,
-                royalty_puzzle_hash: nft_info.royalty_puzzle_hash,
-                royalty_ten_thousandths: nft_info.royalty_ten_thousandths,
-                p2_puzzle_hash: nft_info.p2_puzzle_hash,
-            },
-            p2_puzzle: Program(self.program.0.clone(), p2_puzzle.ptr()),
+            info: nft_info.as_program(&self.program.0),
+            p2_puzzle: Self::new(&self.program.0, p2_puzzle),
         }))
     }
 
     pub fn parse_child_nft(
         &self,
         parent_coin: Coin,
-        parent_puzzle: Program,
         parent_solution: Program,
     ) -> Result<Option<Nft>> {
-        let mut ctx = self.program.0.write().unwrap();
+        let mut ctx = self.program.0.lock().unwrap();
 
-        let parent_puzzle = chik_sdk_driver::Puzzle::parse(&ctx.allocator, parent_puzzle.1);
+        let parent_puzzle = chik_sdk_driver::Puzzle::from(self.clone());
 
         let Some(nft) = chik_sdk_driver::Nft::<HashedPtr>::parse_child(
-            &mut ctx.allocator,
-            parent_coin.into(),
+            &mut ctx,
+            parent_coin,
             parent_puzzle,
             parent_solution.1,
         )?
@@ -58,10 +118,92 @@ impl Puzzle {
             return Ok(None);
         };
 
-        Ok(Some(
-            nft.with_metadata(Program(self.program.0.clone(), nft.info.metadata.ptr()))
-                .into(),
-        ))
+        Ok(Some(nft.as_program(&self.program.0)))
+    }
+
+    pub fn parse_did(&self) -> Result<Option<ParsedDid>> {
+        let puzzle = chik_sdk_driver::Puzzle::from(self.clone());
+
+        let ctx = self.program.0.lock().unwrap();
+
+        let Some((did_info, p2_puzzle)) =
+            chik_sdk_driver::DidInfo::<HashedPtr>::parse(&ctx, puzzle)?
+        else {
+            return Ok(None);
+        };
+
+        Ok(Some(ParsedDid {
+            info: did_info.as_program(&self.program.0),
+            p2_puzzle: Self::new(&self.program.0, p2_puzzle),
+        }))
+    }
+
+    pub fn parse_child_did(
+        &self,
+        parent_coin: Coin,
+        parent_solution: Program,
+        coin: Coin,
+    ) -> Result<Option<Did>> {
+        let mut ctx = self.program.0.lock().unwrap();
+
+        let parent_puzzle = chik_sdk_driver::Puzzle::from(self.clone());
+
+        let Some(did) = chik_sdk_driver::Did::<HashedPtr>::parse_child(
+            &mut ctx,
+            parent_coin,
+            parent_puzzle,
+            parent_solution.1,
+            coin,
+        )?
+        else {
+            return Ok(None);
+        };
+
+        Ok(Some(did.as_program(&self.program.0)))
+    }
+
+    pub fn parse_inner_streaming_puzzle(&self) -> Result<Option<StreamingPuzzleInfo>> {
+        let puzzle = chik_sdk_driver::Puzzle::from(self.clone());
+
+        let ctx = self.program.0.lock().unwrap();
+
+        Ok(chik_sdk_driver::StreamingPuzzleInfo::parse(&ctx, puzzle)?)
+    }
+
+    pub fn parse_child_streamed_cat(
+        &self,
+        parent_coin: Coin,
+        parent_solution: Program,
+    ) -> Result<StreamedCatParsingResult> {
+        let mut ctx = self.program.0.lock().unwrap();
+
+        let parent_puzzle = chik_sdk_driver::Puzzle::from(self.clone());
+
+        let (streamed_cat, clawback, last_payment_amount) =
+            chik_sdk_driver::StreamedCat::from_parent_spend(
+                &mut ctx,
+                parent_coin,
+                parent_puzzle,
+                parent_solution.1,
+            )?;
+
+        Ok(StreamedCatParsingResult {
+            streamed_cat,
+            last_spend_was_clawback: clawback,
+            last_payment_amount_if_clawback: last_payment_amount,
+        })
+    }
+
+    pub fn parse_child_clawbacks(&self, parent_solution: Program) -> Result<Option<Vec<Clawback>>> {
+        let mut ctx = self.program.0.lock().unwrap();
+
+        let parent_puzzle = chik_sdk_driver::Puzzle::from(self.clone());
+
+        Ok(Clawback::parse_children(
+            &mut ctx,
+            parent_puzzle,
+            parent_solution.1,
+        )?)
     }
 }
 
@@ -81,4 +223,12 @@ impl From<Puzzle> for chik_sdk_driver::Puzzle {
             })
         }
     }
+}
+
+pub fn standard_puzzle_hash(synthetic_key: PublicKey) -> Result<Bytes32> {
+    Ok(StandardArgs::curry_tree_hash(synthetic_key).into())
+}
+
+pub fn cat_puzzle_hash(asset_id: Bytes32, inner_puzzle_hash: Bytes32) -> Result<Bytes32> {
+    Ok(CatArgs::curry_tree_hash(asset_id, inner_puzzle_hash.into()).into())
 }

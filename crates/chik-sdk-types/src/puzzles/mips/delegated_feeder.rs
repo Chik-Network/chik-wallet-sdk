@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use hex_literal::hex;
 use klvm_traits::{FromKlvm, ToKlvm};
 use klvm_utils::TreeHash;
@@ -17,12 +19,17 @@ impl<I> DelegatedFeederArgs<I> {
 }
 
 impl<I> Mod for DelegatedFeederArgs<I> {
-    const MOD_REVEAL: &[u8] = &DELEGATED_FEEDER_PUZZLE;
-    const MOD_HASH: TreeHash = DELEGATED_FEEDER_PUZZLE_HASH;
+    fn mod_reveal() -> Cow<'static, [u8]> {
+        Cow::Borrowed(&DELEGATED_FEEDER_PUZZLE)
+    }
+
+    fn mod_hash() -> TreeHash {
+        DELEGATED_FEEDER_PUZZLE_HASH
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, ToKlvm, FromKlvm)]
-#[klvm(solution)]
+#[klvm(list)]
 pub struct DelegatedFeederSolution<P, S, I> {
     pub delegated_puzzle: P,
     pub delegated_solution: S,

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use chik_bls::PublicKey;
 use hex_literal::hex;
 use klvm_traits::{FromKlvm, ToKlvm};
@@ -18,8 +20,13 @@ impl BlsMember {
 }
 
 impl Mod for BlsMember {
-    const MOD_REVEAL: &[u8] = &BLS_MEMBER;
-    const MOD_HASH: TreeHash = BLS_MEMBER_HASH;
+    fn mod_reveal() -> Cow<'static, [u8]> {
+        Cow::Borrowed(&BLS_MEMBER)
+    }
+
+    fn mod_hash() -> TreeHash {
+        BLS_MEMBER_HASH
+    }
 }
 
 pub const BLS_MEMBER: [u8; 41] = hex!(

@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, sync::Arc};
 
-use chik_consensus::gen::validation_error::{ErrorCode, ValidationErr};
+use chik_consensus::validation_error::{ErrorCode, ValidationErr};
 use chik_protocol::{
     Bytes, Bytes32, CoinState, CoinStateUpdate, Message, NewPeakWallet, ProtocolMessageTypes,
     PuzzleSolutionResponse, RegisterForCoinUpdates, RegisterForPhUpdates, RejectCoinState,

@@ -1,7 +1,6 @@
 use chik_bls::PublicKey;
-use chik_sdk_types::{
-    P2DelegatedConditionsArgs, P2DelegatedConditionsSolution, P2_DELEGATED_CONDITIONS_PUZZLE_HASH,
-};
+use chik_puzzles::P2_DELEGATED_CONDITIONS_HASH;
+use chik_sdk_types::puzzles::{P2DelegatedConditionsArgs, P2DelegatedConditionsSolution};
 use klvm_traits::FromKlvm;
 use klvmr::{Allocator, NodePtr};
 
@@ -36,7 +35,7 @@ impl Layer for P2DelegatedConditionsLayer {
             return Ok(None);
         };
 
-        if puzzle.mod_hash != P2_DELEGATED_CONDITIONS_PUZZLE_HASH {
+        if puzzle.mod_hash != P2_DELEGATED_CONDITIONS_HASH.into() {
             return Ok(None);
         }
 

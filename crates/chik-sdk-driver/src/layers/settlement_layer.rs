@@ -1,5 +1,6 @@
 use chik_puzzle_types::offer::SettlementPaymentsSolution;
 use chik_puzzles::SETTLEMENT_PAYMENT_HASH;
+use chik_sdk_types::puzzles::SettlementPayment;
 use klvm_traits::FromKlvm;
 use klvmr::{Allocator, NodePtr};
 
@@ -13,7 +14,7 @@ impl Layer for SettlementLayer {
     type Solution = SettlementPaymentsSolution;
 
     fn construct_puzzle(&self, ctx: &mut SpendContext) -> Result<NodePtr, DriverError> {
-        ctx.settlement_payments_puzzle()
+        ctx.alloc_mod::<SettlementPayment>()
     }
 
     fn construct_solution(

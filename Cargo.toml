@@ -1,6 +1,6 @@
 [package]
 name = "chik-wallet-sdk"
-version = "0.21.0"
+version = "0.25.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "An unofficial SDK for building Chik wallets."
@@ -16,7 +16,15 @@ all-features = true
 
 [workspace]
 resolver = "2"
-members = ["crates/*", "napi", "wasm", "pyo3"]
+members = [
+    "crates/*",
+    "crates/chik-sdk-types/derive",
+    "crates/chik-sdk-bindings/bindy",
+    "crates/chik-sdk-bindings/bindy-macro",
+    "napi",
+    "wasm",
+    "pyo3"
+]
 
 [workspace.package]
 readme = "README.md"
@@ -63,13 +71,9 @@ workspace = true
 
 [features]
 chip-0035 = ["chik-sdk-driver/chip-0035", "chik-sdk-types/chip-0035"]
-experimental-vaults = [
-    "chik-sdk-driver/experimental-vaults",
-    "chik-sdk-types/experimental-vaults",
-]
 offers = ["chik-sdk-driver/offers"]
-native-tls = ["chik-sdk-client/native-tls"]
-rustls = ["chik-sdk-client/rustls"]
+native-tls = ["chik-sdk-client/native-tls", "chik-sdk-coinset/native-tls"]
+rustls = ["chik-sdk-client/rustls", "chik-sdk-coinset/rustls"]
 peer-simulator = ["chik-sdk-test/peer-simulator"]
 
 [dependencies]
@@ -80,6 +84,11 @@ chik-sdk-test = { workspace = true }
 chik-sdk-types = { workspace = true }
 chik-sdk-utils = { workspace = true }
 chik-sdk-coinset = { workspace = true }
+chik-protocol = { workspace = true }
+chik-bls = { workspace = true }
+klvm-traits = { workspace = true }
+klvm-utils = { workspace = true }
+klvmr = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
@@ -92,76 +101,79 @@ klvm-traits = { workspace = true, features = ["derive"] }
 klvmr = { workspace = true }
 
 [workspace.dependencies]
-chik-wallet-sdk = { version = "0.21.0", path = "." }
-chik-sdk-client = { version = "0.21.0", path = "./crates/chik-sdk-client" }
-chik-sdk-derive = { version = "0.21.0", path = "./crates/chik-sdk-derive" }
-chik-sdk-driver = { version = "0.21.0", path = "./crates/chik-sdk-driver" }
-chik-sdk-signer = { version = "0.21.0", path = "./crates/chik-sdk-signer" }
-chik-sdk-test = { version = "0.21.0", path = "./crates/chik-sdk-test" }
-chik-sdk-types = { version = "0.21.0", path = "./crates/chik-sdk-types" }
-chik-sdk-utils = { version = "0.21.0", path = "./crates/chik-sdk-utils" }
-chik-sdk-coinset = { version = "0.21.0", path = "./crates/chik-sdk-coinset" }
-chik-sdk-bindings = { version = "0.21.0", path = "./crates/chik-sdk-bindings" }
-binky = { version = "0.21.0", path = "./crates/binky" }
-binky-macro = { version = "0.21.0", path = "./crates/binky-macro" }
-chik = "0.20.0"
-chik-ssl = "0.20.0"
-chik-protocol = "0.20.0"
-chik-consensus = "0.20.0"
-chik-traits = "0.20.0"
-chik-bls = "0.20.0"
-chik-secp = "0.20.0"
+chik-wallet-sdk = { version = "0.25.0", path = "." }
+chik-sdk-client = { version = "0.25.0", path = "./crates/chik-sdk-client" }
+chik-sdk-driver = { version = "0.25.0", path = "./crates/chik-sdk-driver" }
+chik-sdk-signer = { version = "0.25.0", path = "./crates/chik-sdk-signer" }
+chik-sdk-test = { version = "0.25.0", path = "./crates/chik-sdk-test" }
+chik-sdk-types = { version = "0.25.0", path = "./crates/chik-sdk-types" }
+chik-sdk-derive = { version = "0.25.0", path = "./crates/chik-sdk-types/derive" }
+chik-sdk-utils = { version = "0.25.0", path = "./crates/chik-sdk-utils" }
+chik-sdk-coinset = { version = "0.25.0", path = "./crates/chik-sdk-coinset" }
+chik-sdk-bindings = { version = "0.25.0", path = "./crates/chik-sdk-bindings" }
+bindy = { version = "0.25.0", path = "./crates/chik-sdk-bindings/bindy" }
+bindy-macro = { version = "0.25.0", path = "./crates/chik-sdk-bindings/bindy-macro" }
+chik = "0.25.0"
+chik-ssl = "0.25.0"
+chik-protocol = "0.25.0"
+chik-consensus = "0.25.0"
+chik-traits = "0.25.0"
+chik-bls = "0.25.0"
+chik-secp = "0.25.0"
+chik-puzzle-types = "0.25.0"
+klvm-traits = "0.25.0"
+klvm-utils = "0.25.0"
+chik-sha2 = "0.25.0"
 chik-puzzles = "0.20.1"
-chik-puzzle-types = "0.20.0"
-klvm-traits = "0.20.0"
-klvm-utils = "0.20.0"
-chik-sha2 = "0.20.0"
-klvmr = "0.12.0"
-thiserror = "1.0.61"
+klvmr = "0.14.0"
+thiserror = "2.0.12"
 hex = "0.4.3"
 bech32 = "0.9.1"
 rand = "0.8.5"
 rand_chacha = "0.3.1"
 hex-literal = "0.4.1"
-indexmap = "2.7.1"
+indexmap = "2.9.0"
 bip39 = "2.1.0"
 futures-util = "0.3.30"
 futures-channel = "0.3.30"
-anyhow = "1.0.95"
-tokio = "1.43.0"
+anyhow = "1.0.98"
+tokio = "1.45.1"
 itertools = "0.13.0"
 tokio-tungstenite = "0.24.0"
 tungstenite = "0.24.0"
-native-tls = "0.2.11"
-rustls = "0.23.12"
+native-tls = "0.2.14"
+rustls = "0.23.27"
 rustls-pemfile = "2.2.0"
-flate2 = "1.0.35"
-once_cell = "1.20.2"
+flate2 = "1.1.2"
+once_cell = "1.21.3"
 num-bigint = "0.4.6"
 rstest = "0.22.0"
 tracing = "0.1.41"
-syn = "2.0.96"
-quote = "1.0.38"
+syn = "2.0.101"
+quote = "1.0.40"
 convert_case = "0.6.0"
 fastrand = "2.3.0"
-napi = { version = "2.16.16", default-features = false }
+napi = { version = "2.16.17", default-features = false }
 napi-derive = { version = "2.16.13" }
-napi-build = "2.1.4"
+napi-build = "2.2.1"
 paste = "1.0.15"
-bigdecimal = "0.4.7"
+bigdecimal = "0.4.8"
 k256 = "0.13.4"
 p256 = "0.13.2"
 signature = "2.2.0"
-serde = { version = "1.0.217", features = ["derive"] }
-serde_json = "1.0.117"
-reqwest = { version = "0.12.12", features = ["json"] }
-proc-macro2 = "1.0.93"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+reqwest = { version = "0.12.19", default-features = false, features = ["json"] }
+proc-macro2 = "1.0.95"
 wasm-bindgen = "0.2.100"
 getrandom = "0.2.15"
-sha2 = "0.10.8"
-pyo3 = "0.23.3"
+sha2 = "0.10.9"
+pyo3 = "0.23.5"
 js-sys = "0.3.77"
-parking_lot = "0.12.3"
+parking_lot = "0.12.4"
+klvm_tools_rs = "0.3.0"
+wasm-bindgen-futures = "0.4.50"
+pyo3-async-runtimes = "0.23"
 
 [profile.release]
 lto = true

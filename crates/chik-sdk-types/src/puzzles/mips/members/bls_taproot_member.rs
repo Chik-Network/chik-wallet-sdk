@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use chik_bls::PublicKey;
 use hex_literal::hex;
 use klvm_traits::{FromKlvm, ToKlvm};
@@ -18,12 +20,17 @@ impl BlsTaprootMember {
 }
 
 impl Mod for BlsTaprootMember {
-    const MOD_REVEAL: &[u8] = &BLS_TAPROOT_MEMBER;
-    const MOD_HASH: TreeHash = BLS_TAPROOT_MEMBER_HASH;
+    fn mod_reveal() -> Cow<'static, [u8]> {
+        Cow::Borrowed(&BLS_TAPROOT_MEMBER)
+    }
+
+    fn mod_hash() -> TreeHash {
+        BLS_TAPROOT_MEMBER_HASH
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ToKlvm, FromKlvm)]
-#[klvm(solution)]
+#[klvm(list)]
 pub struct BlsTaprootMemberSolution {
     pub original_public_key: Option<PublicKey>,
 }

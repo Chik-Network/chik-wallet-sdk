@@ -1,33 +1,41 @@
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 
-use binky::Result;
+use bindy::Result;
+use chik_bls::PublicKey;
+use chik_consensus::opcodes::{
+    CREATE_COIN_ANNOUNCEMENT, CREATE_PUZZLE_ANNOUNCEMENT, RECEIVE_MESSAGE, SEND_MESSAGE,
+};
 use chik_protocol::{Bytes, Bytes32};
-use chik_sdk_driver::{self as sdk, member_puzzle_hash, MemberSpend, MofN, SpendContext};
+use chik_sdk_driver::{self as sdk, member_puzzle_hash, InnerPuzzleSpend, MofN, SpendContext};
 use chik_sdk_types::{
-    BlsMember, FixedPuzzleMember, Force1of2RestrictedVariable, Force1of2RestrictedVariableSolution,
-    Mod, PasskeyMember, PasskeyMemberPuzzleAssert, PasskeyMemberPuzzleAssertSolution,
-    PasskeyMemberSolution, PreventConditionOpcode, Secp256k1Member, Secp256k1MemberPuzzleAssert,
-    Secp256k1MemberPuzzleAssertSolution, Secp256k1MemberSolution, Secp256r1Member,
-    Secp256r1MemberPuzzleAssert, Secp256r1MemberPuzzleAssertSolution, Secp256r1MemberSolution,
-    SingletonMember, SingletonMemberSolution, Timelock, PREVENT_MULTIPLE_CREATE_COINS_PUZZLE_HASH,
+    puzzles::{
+        BlsMember, FixedPuzzleMember, Force1of2RestrictedVariable,
+        Force1of2RestrictedVariableSolution, K1Member, K1MemberPuzzleAssert,
+        K1MemberPuzzleAssertSolution, K1MemberSolution, PasskeyMember, PasskeyMemberPuzzleAssert,
+        PasskeyMemberPuzzleAssertSolution, PasskeyMemberSolution, PreventConditionOpcode,
+        PreventMultipleCreateCoinsMod, R1Member, R1MemberPuzzleAssert,
+        R1MemberPuzzleAssertSolution, R1MemberSolution, SingletonMember, SingletonMemberSolution,
+        Timelock, PREVENT_MULTIPLE_CREATE_COINS_PUZZLE_HASH,
+    },
+    Mod,
 };
 use klvm_utils::TreeHash;
 use klvmr::NodePtr;
 
-use crate::{K1PublicKey, K1Signature, Program, PublicKey, R1PublicKey, R1Signature, Spend};
+use crate::{K1PublicKey, K1Signature, Program, R1PublicKey, R1Signature, Spend};
 
 use super::{convert_restrictions, MemberConfig, Vault};
 
 #[derive(Clone)]
 pub struct MipsSpend {
-    pub(crate) klvm: Arc<RwLock<SpendContext>>,
+    pub(crate) klvm: Arc<Mutex<SpendContext>>,
     pub(crate) spend: Arc<Mutex<sdk::MipsSpend>>,
     pub(crate) coin: chik_protocol::Coin,
 }
 
 impl MipsSpend {
     pub fn spend(&self, custody_hash: TreeHash) -> Result<Spend> {
-        let mut ctx = self.klvm.write().unwrap();
+        let mut ctx = self.klvm.lock().unwrap();
 
         let spend = self.spend.lock().unwrap().spend(&mut ctx, custody_hash)?;
 
@@ -38,7 +46,7 @@ impl MipsSpend {
     }
 
     pub fn spend_vault(&self, vault: Vault) -> Result<()> {
-        let mut ctx = self.klvm.write().unwrap();
+        let mut ctx = self.klvm.lock().unwrap();
         let vault = sdk::Vault::from(vault);
         let mips_spend = self.spend.lock().unwrap();
         vault.spend(&mut ctx, &mips_spend)?;
@@ -59,7 +67,7 @@ impl MipsSpend {
 
         self.spend.lock().unwrap().members.insert(
             member_hash,
-            MemberSpend::m_of_n(
+            InnerPuzzleSpend::m_of_n(
                 config.nonce.try_into().unwrap(),
                 restrictions,
                 required.try_into().unwrap(),
@@ -77,17 +85,17 @@ impl MipsSpend {
         signature: K1Signature,
         fast_forward: bool,
     ) -> Result<()> {
-        let mut ctx = self.klvm.write().unwrap();
+        let mut ctx = self.klvm.lock().unwrap();
 
         let nonce = config.nonce.try_into().unwrap();
         let restrictions = convert_restrictions(config.restrictions);
 
         let (member_hash, member_puzzle) = if fast_forward {
-            let member = Secp256k1MemberPuzzleAssert::new(public_key.0);
+            let member = K1MemberPuzzleAssert::new(public_key.0);
             let tree_hash = member.curry_tree_hash();
             (tree_hash, ctx.curry(member)?)
         } else {
-            let member = Secp256k1Member::new(public_key.0);
+            let member = K1Member::new(public_key.0);
             let tree_hash = member.curry_tree_hash();
             (tree_hash, ctx.curry(member)?)
         };
@@ -96,20 +104,17 @@ impl MipsSpend {
             member_puzzle_hash(nonce, restrictions.clone(), member_hash, config.top_level);
 
         let member_solution = if fast_forward {
-            ctx.alloc(&Secp256k1MemberPuzzleAssertSolution::new(
+            ctx.alloc(&K1MemberPuzzleAssertSolution::new(
                 self.coin.puzzle_hash,
                 signature.0,
             ))?
         } else {
-            ctx.alloc(&Secp256k1MemberSolution::new(
-                self.coin.coin_id(),
-                signature.0,
-            ))?
+            ctx.alloc(&K1MemberSolution::new(self.coin.coin_id(), signature.0))?
         };
 
         self.spend.lock().unwrap().members.insert(
             member_hash,
-            MemberSpend::new(
+            InnerPuzzleSpend::new(
                 nonce,
                 restrictions,
                 sdk::Spend::new(member_puzzle, member_solution),
@@ -126,17 +131,17 @@ impl MipsSpend {
         signature: R1Signature,
         fast_forward: bool,
     ) -> Result<()> {
-        let mut ctx = self.klvm.write().unwrap();
+        let mut ctx = self.klvm.lock().unwrap();
 
         let nonce = config.nonce.try_into().unwrap();
         let restrictions = convert_restrictions(config.restrictions);
 
         let (member_hash, member_puzzle) = if fast_forward {
-            let member = Secp256r1MemberPuzzleAssert::new(public_key.0);
+            let member = R1MemberPuzzleAssert::new(public_key.0);
             let tree_hash = member.curry_tree_hash();
             (tree_hash, ctx.curry(member)?)
         } else {
-            let member = Secp256r1Member::new(public_key.0);
+            let member = R1Member::new(public_key.0);
             let tree_hash = member.curry_tree_hash();
             (tree_hash, ctx.curry(member)?)
         };
@@ -145,20 +150,17 @@ impl MipsSpend {
             member_puzzle_hash(nonce, restrictions.clone(), member_hash, config.top_level);
 
         let member_solution = if fast_forward {
-            ctx.alloc(&Secp256r1MemberPuzzleAssertSolution::new(
+            ctx.alloc(&R1MemberPuzzleAssertSolution::new(
                 self.coin.puzzle_hash,
                 signature.0,
             ))?
         } else {
-            ctx.alloc(&Secp256r1MemberSolution::new(
-                self.coin.coin_id(),
-                signature.0,
-            ))?
+            ctx.alloc(&R1MemberSolution::new(self.coin.coin_id(), signature.0))?
         };
 
         self.spend.lock().unwrap().members.insert(
             member_hash,
-            MemberSpend::new(
+            InnerPuzzleSpend::new(
                 nonce,
                 restrictions,
                 sdk::Spend::new(member_puzzle, member_solution),
@@ -169,12 +171,12 @@ impl MipsSpend {
     }
 
     pub fn bls_member(&self, config: MemberConfig, public_key: PublicKey) -> Result<()> {
-        let mut ctx = self.klvm.write().unwrap();
+        let mut ctx = self.klvm.lock().unwrap();
 
         let nonce = config.nonce.try_into().unwrap();
         let restrictions = convert_restrictions(config.restrictions);
 
-        let member = BlsMember::new(public_key.0);
+        let member = BlsMember::new(public_key);
         let member_hash = member.curry_tree_hash();
         let member_hash =
             member_puzzle_hash(nonce, restrictions.clone(), member_hash, config.top_level);
@@ -184,7 +186,7 @@ impl MipsSpend {
 
         self.spend.lock().unwrap().members.insert(
             member_hash,
-            MemberSpend::new(
+            InnerPuzzleSpend::new(
                 nonce,
                 restrictions,
                 sdk::Spend::new(member_puzzle, member_solution),
@@ -205,7 +207,7 @@ impl MipsSpend {
         challenge_index: u32,
         fast_forward: bool,
     ) -> Result<()> {
-        let mut ctx = self.klvm.write().unwrap();
+        let mut ctx = self.klvm.lock().unwrap();
 
         let nonce = config.nonce.try_into().unwrap();
         let restrictions = convert_restrictions(config.restrictions);
@@ -243,7 +245,7 @@ impl MipsSpend {
 
         self.spend.lock().unwrap().members.insert(
             member_hash,
-            MemberSpend::new(
+            InnerPuzzleSpend::new(
                 nonce,
                 restrictions,
                 sdk::Spend::new(member_puzzle, member_solution),
@@ -260,7 +262,7 @@ impl MipsSpend {
         singleton_inner_puzzle_hash: Bytes32,
         singleton_amount: u64,
     ) -> Result<()> {
-        let mut ctx = self.klvm.write().unwrap();
+        let mut ctx = self.klvm.lock().unwrap();
 
         let nonce = config.nonce.try_into().unwrap();
         let restrictions = convert_restrictions(config.restrictions);
@@ -283,7 +285,7 @@ impl MipsSpend {
 
         self.spend.lock().unwrap().members.insert(
             member_hash,
-            MemberSpend::new(
+            InnerPuzzleSpend::new(
                 nonce,
                 restrictions,
                 sdk::Spend::new(member_puzzle, member_solution),
@@ -298,7 +300,7 @@ impl MipsSpend {
         config: MemberConfig,
         fixed_puzzle_hash: Bytes32,
     ) -> Result<()> {
-        let mut ctx = self.klvm.write().unwrap();
+        let mut ctx = self.klvm.lock().unwrap();
 
         let nonce = config.nonce.try_into().unwrap();
         let restrictions = convert_restrictions(config.restrictions);
@@ -316,7 +318,7 @@ impl MipsSpend {
 
         self.spend.lock().unwrap().members.insert(
             member_hash,
-            MemberSpend::new(
+            InnerPuzzleSpend::new(
                 nonce,
                 restrictions,
                 sdk::Spend::new(member_puzzle, NodePtr::NIL),
@@ -327,7 +329,7 @@ impl MipsSpend {
     }
 
     pub fn custom_member(&self, config: MemberConfig, spend: Spend) -> Result<()> {
-        let ctx = self.klvm.read().unwrap();
+        let ctx = self.klvm.lock().unwrap();
 
         let nonce = config.nonce.try_into().unwrap();
         let restrictions = convert_restrictions(config.restrictions);
@@ -341,7 +343,7 @@ impl MipsSpend {
 
         self.spend.lock().unwrap().members.insert(
             member_hash,
-            MemberSpend::new(
+            InnerPuzzleSpend::new(
                 nonce,
                 restrictions,
                 chik_sdk_driver::Spend {
@@ -356,7 +358,7 @@ impl MipsSpend {
 
     pub fn timelock(&self, timelock: u64) -> Result<()> {
         let restriction = Timelock::new(timelock);
-        let puzzle = self.klvm.write().unwrap().curry(restriction)?;
+        let puzzle = self.klvm.lock().unwrap().curry(restriction)?;
         self.spend.lock().unwrap().restrictions.insert(
             restriction.curry_tree_hash(),
             sdk::Spend::new(puzzle, NodePtr::NIL),
@@ -372,7 +374,7 @@ impl MipsSpend {
         delegated_puzzle_validator_list_hash: Bytes32,
         new_right_side_member_hash: Bytes32,
     ) -> Result<()> {
-        let mut ctx = self.klvm.write().unwrap();
+        let mut ctx = self.klvm.lock().unwrap();
 
         let restriction = Force1of2RestrictedVariable::new(
             left_side_subtree_hash,
@@ -395,7 +397,7 @@ impl MipsSpend {
     }
 
     pub fn prevent_condition_opcode(&self, condition_opcode: u16) -> Result<()> {
-        let mut ctx = self.klvm.write().unwrap();
+        let mut ctx = self.klvm.lock().unwrap();
 
         let restriction = PreventConditionOpcode::new(condition_opcode);
         let puzzle = ctx.curry(restriction)?;
@@ -410,9 +412,9 @@ impl MipsSpend {
     }
 
     pub fn prevent_multiple_create_coins(&self) -> Result<()> {
-        let mut ctx = self.klvm.write().unwrap();
+        let mut ctx = self.klvm.lock().unwrap();
 
-        let puzzle = ctx.prevent_multiple_create_coins_puzzle()?;
+        let puzzle = ctx.alloc_mod::<PreventMultipleCreateCoinsMod>()?;
         let solution = ctx.alloc(&NodePtr::NIL)?;
 
         self.spend.lock().unwrap().restrictions.insert(
@@ -423,11 +425,11 @@ impl MipsSpend {
         Ok(())
     }
 
-    pub fn prevent_side_effects(&self) -> Result<()> {
-        self.prevent_condition_opcode(60)?;
-        self.prevent_condition_opcode(62)?;
-        self.prevent_condition_opcode(66)?;
-        self.prevent_condition_opcode(67)?;
+    pub fn prevent_vault_side_effects(&self) -> Result<()> {
+        self.prevent_condition_opcode(CREATE_COIN_ANNOUNCEMENT)?;
+        self.prevent_condition_opcode(CREATE_PUZZLE_ANNOUNCEMENT)?;
+        self.prevent_condition_opcode(SEND_MESSAGE)?;
+        self.prevent_condition_opcode(RECEIVE_MESSAGE)?;
         self.prevent_multiple_create_coins()?;
         Ok(())
     }

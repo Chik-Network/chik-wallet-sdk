@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 
-use binky::{FromRust, IntoRust, Pyo3, Pyo3Context};
+use bindy::{FromRust, Pyo3Context};
 use num_bigint::BigInt;
 use pyo3::{
     exceptions::PyTypeError,
@@ -8,30 +8,12 @@ use pyo3::{
     types::{PyList, PyNone, PyTuple},
 };
 
-binky_macro::binky_pyo3!("bindings.json");
+bindy_macro::bindy_pyo3!("bindings.json");
 
 #[pymethods]
 impl Klvm {
     pub fn alloc(&self, value: Bound<'_, PyAny>) -> PyResult<Program> {
         Ok(Program::from_rust(alloc(&self.0, value)?, &Pyo3Context)?)
-    }
-
-    pub fn int(&self, value: BigInt) -> PyResult<Program> {
-        Ok(Program::from_rust(
-            self.0
-                .big_int(IntoRust::<_, _, Pyo3>::into_rust(value, &Pyo3Context)?)?,
-            &Pyo3Context,
-        )?)
-    }
-}
-
-#[pymethods]
-impl Program {
-    pub fn to_int(&self) -> PyResult<Option<BigInt>> {
-        Ok(<Option<BigInt> as FromRust<_, _, Pyo3>>::from_rust(
-            self.0.to_big_int()?,
-            &Pyo3Context,
-        )?)
     }
 }
 
@@ -42,7 +24,7 @@ pub fn alloc(
     if let Ok(_value) = value.downcast::<PyNone>() {
         Ok(klvm.nil()?)
     } else if let Ok(value) = value.extract::<BigInt>() {
-        Ok(klvm.big_int(value)?)
+        Ok(klvm.int(value)?)
     } else if let Ok(value) = value.extract::<bool>() {
         Ok(klvm.bool(value)?)
     } else if let Ok(value) = value.extract::<String>() {
@@ -156,8 +138,41 @@ pub fn alloc(
         Ok(klvm.receive_message(value.0.mode, value.0.message, value.0.data)?)
     } else if let Ok(value) = value.extract::<Softfork>() {
         Ok(klvm.softfork(value.0.cost, value.0.rest)?)
+    } else if let Ok(_value) = value.extract::<MeltSingleton>() {
+        Ok(klvm.melt_singleton()?)
+    } else if let Ok(value) = value.extract::<TransferNft>() {
+        Ok(klvm.transfer_nft(
+            value.0.launcher_id,
+            value.0.trade_prices.clone(),
+            value.0.singleton_inner_puzzle_hash,
+        )?)
+    } else if let Ok(value) = value.extract::<RunCatTail>() {
+        Ok(klvm.run_cat_tail(value.0.program.clone(), value.0.solution.clone())?)
+    } else if let Ok(value) = value.extract::<UpdateNftMetadata>() {
+        Ok(klvm.update_nft_metadata(
+            value.0.updater_puzzle_reveal.clone(),
+            value.0.updater_solution.clone(),
+        )?)
+    } else if let Ok(value) = value.extract::<UpdateDataStoreMerkleRoot>() {
+        Ok(klvm.update_data_store_merkle_root(value.0.new_merkle_root, value.0.memos.clone())?)
     } else if let Ok(value) = value.extract::<NftMetadata>() {
         Ok(klvm.nft_metadata(value.0.clone())?)
+    } else if let Ok(value) = value.extract::<MipsMemo>() {
+        Ok(klvm.mips_memo(value.0.clone())?)
+    } else if let Ok(value) = value.extract::<InnerPuzzleMemo>() {
+        Ok(klvm.inner_puzzle_memo(value.0.clone())?)
+    } else if let Ok(value) = value.extract::<RestrictionMemo>() {
+        Ok(klvm.restriction_memo(value.0.clone())?)
+    } else if let Ok(value) = value.extract::<WrapperMemo>() {
+        Ok(klvm.wrapper_memo(value.0.clone())?)
+    } else if let Ok(value) = value.extract::<Force1of2RestrictedVariableMemo>() {
+        Ok(klvm.force_1_of_2_restricted_variable_memo(value.0.clone())?)
+    } else if let Ok(value) = value.extract::<MemoKind>() {
+        Ok(klvm.memo_kind(value.0.clone())?)
+    } else if let Ok(value) = value.extract::<MemberMemo>() {
+        Ok(klvm.member_memo(value.0.clone())?)
+    } else if let Ok(value) = value.extract::<MofNMemo>() {
+        Ok(klvm.m_of_n_memo(value.0.clone())?)
     } else {
         PyResult::Err(PyErr::new::<PyTypeError, _>("Unsupported KLVM value type"))
     }

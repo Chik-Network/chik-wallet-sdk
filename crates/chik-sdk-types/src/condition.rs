@@ -1,12 +1,16 @@
 use chik_bls::PublicKey;
 use chik_protocol::{Bytes, Bytes32};
+use chik_puzzle_types::Memos;
 use chik_sdk_derive::conditions;
-use klvm_traits::{FromKlvm, ToKlvm, ToKlvmError};
+use nfts::TradePrice;
 
 mod agg_sig;
+mod announcements;
+mod list;
+mod nfts;
 
-pub use agg_sig::*;
-use klvmr::{Allocator, NodePtr};
+pub use announcements::*;
+pub use list::*;
 
 conditions! {
     pub enum Condition<T> {
@@ -58,7 +62,7 @@ conditions! {
             opcode: i8 if 51,
             puzzle_hash: Bytes32,
             amount: u64,
-            ...memos: Option<Memos<T>>,
+            ...memos: Memos<T>,
         },
         ReserveFee as Copy {
             opcode: i8 if 52,
@@ -171,9 +175,9 @@ conditions! {
         },
         TransferNft as Default {
             opcode: i8 if -10,
-            did_id: Option<Bytes32>,
+            launcher_id: Option<Bytes32>,
             trade_prices: Vec<TradePrice>,
-            did_inner_puzzle_hash: Option<Bytes32>,
+            singleton_inner_puzzle_hash: Option<Bytes32>,
         },
         RunCatTail<P, S> as Copy {
             opcode: i8 if 51,
@@ -193,49 +197,4 @@ conditions! {
             ...memos: Vec<Bytes>,
         },
     }
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, ToKlvm, FromKlvm)]
-#[klvm(list)]
-pub struct Memos<T> {
-    pub value: T,
-}
-
-impl<T> Memos<T> {
-    pub fn new(value: T) -> Self {
-        Self { value }
-    }
-
-    pub fn some(value: T) -> Option<Self> {
-        Some(Self { value })
-    }
-}
-
-impl Memos<NodePtr> {
-    pub fn hint(allocator: &mut Allocator, hint: Bytes32) -> Result<Self, ToKlvmError> {
-        Ok(Self {
-            value: [hint].to_klvm(allocator)?,
-        })
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ToKlvm, FromKlvm)]
-#[klvm(list)]
-pub struct NewMetadataInfo<M> {
-    pub new_metadata: M,
-    pub new_updater_puzzle_hash: Bytes32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ToKlvm, FromKlvm)]
-#[klvm(list)]
-pub struct NewMetadataOutput<M, C> {
-    pub metadata_info: NewMetadataInfo<M>,
-    pub conditions: C,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ToKlvm, FromKlvm)]
-#[klvm(list)]
-pub struct TradePrice {
-    pub amount: u64,
-    pub puzzle_hash: Bytes32,
 }

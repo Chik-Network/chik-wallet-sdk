@@ -1,24 +1,26 @@
 mod members;
+mod memos;
 mod restrictions;
 mod spend;
 
-use chik_sdk_types::{AddDelegatedPuzzleWrapper, Mod};
 pub use members::*;
+pub use memos::*;
 pub use restrictions::*;
 pub use spend::*;
 
-use binky::Result;
-use chik_protocol::Bytes32;
+use bindy::Result;
+use chik_protocol::{Bytes32, Coin};
 use chik_sdk_driver as sdk;
+use chik_sdk_types::{puzzles::AddDelegatedPuzzleWrapper, Mod};
 use klvm_utils::TreeHash;
 
-use crate::{Coin, LineageProof, Program};
+use crate::{Program, Proof};
 
 #[derive(Clone)]
 pub struct Vault {
     pub coin: Coin,
     pub launcher_id: Bytes32,
-    pub proof: LineageProof,
+    pub proof: Proof,
     pub custody_hash: TreeHash,
 }
 
@@ -31,7 +33,7 @@ impl Vault {
 impl From<sdk::Vault> for Vault {
     fn from(value: sdk::Vault) -> Self {
         Vault {
-            coin: value.coin.into(),
+            coin: value.coin,
             launcher_id: value.launcher_id,
             proof: value.proof.into(),
             custody_hash: value.custody_hash,
@@ -42,7 +44,7 @@ impl From<sdk::Vault> for Vault {
 impl From<Vault> for sdk::Vault {
     fn from(value: Vault) -> Self {
         sdk::Vault {
-            coin: value.coin.into(),
+            coin: value.coin,
             launcher_id: value.launcher_id,
             proof: value.proof.into(),
             custody_hash: value.custody_hash,

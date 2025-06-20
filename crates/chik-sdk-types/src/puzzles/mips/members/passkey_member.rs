@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use chik_protocol::{Bytes, Bytes32};
 use chik_secp::{R1PublicKey, R1Signature};
 use hex_literal::hex;
@@ -19,12 +21,17 @@ impl PasskeyMember {
 }
 
 impl Mod for PasskeyMember {
-    const MOD_REVEAL: &[u8] = &PASSKEY_MEMBER;
-    const MOD_HASH: TreeHash = PASSKEY_MEMBER_HASH;
+    fn mod_reveal() -> Cow<'static, [u8]> {
+        Cow::Borrowed(&PASSKEY_MEMBER)
+    }
+
+    fn mod_hash() -> TreeHash {
+        PASSKEY_MEMBER_HASH
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, ToKlvm, FromKlvm)]
-#[klvm(solution)]
+#[klvm(list)]
 pub struct PasskeyMemberSolution {
     pub authenticator_data: Bytes,
     pub client_data_json: Bytes,

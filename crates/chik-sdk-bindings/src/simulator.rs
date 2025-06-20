@@ -1,9 +1,10 @@
 use std::sync::{Arc, Mutex};
 
-use binky::Result;
-use chik_protocol::Bytes32;
+use bindy::Result;
+use chik_bls::SecretKey;
+use chik_protocol::{Bytes32, Coin, CoinSpend};
 
-use crate::{BlsPairWithCoin, Coin, CoinSpend, SecretKey};
+use crate::BlsPairWithCoin;
 
 #[derive(Default, Clone)]
 pub struct Simulator(Arc<Mutex<chik_sdk_test::Simulator>>);
@@ -14,7 +15,7 @@ impl Simulator {
     }
 
     pub fn new_coin(&self, puzzle_hash: Bytes32, amount: u64) -> Result<Coin> {
-        Ok(self.0.lock().unwrap().new_coin(puzzle_hash, amount).into())
+        Ok(self.0.lock().unwrap().new_coin(puzzle_hash, amount))
     }
 
     pub fn bls(&self, amount: u64) -> Result<BlsPairWithCoin> {
@@ -26,10 +27,15 @@ impl Simulator {
         coin_spends: Vec<CoinSpend>,
         secret_keys: Vec<SecretKey>,
     ) -> Result<()> {
-        self.0.lock().unwrap().spend_coins(
-            coin_spends.into_iter().map(Into::into).collect::<Vec<_>>(),
-            &secret_keys.into_iter().map(|sk| sk.0).collect::<Vec<_>>(),
-        )?;
+        self.0
+            .lock()
+            .unwrap()
+            .spend_coins(coin_spends, &secret_keys)?;
+        Ok(())
+    }
+
+    pub fn pass_time(&self, time: u64) -> Result<()> {
+        self.0.lock().unwrap().pass_time(time);
         Ok(())
     }
 }

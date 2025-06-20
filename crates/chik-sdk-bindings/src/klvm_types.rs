@@ -1,6 +1,6 @@
-use binky::Error;
+use bindy::{Error, Result};
 use chik_protocol::Bytes32;
-use chik_puzzle_types::{EveProof, Proof};
+use chik_puzzle_types::{EveProof as EveProofRs, LineageProof, Proof as ProofRs};
 
 use crate::Program;
 
@@ -38,16 +38,22 @@ pub struct CurriedProgram {
 }
 
 #[derive(Clone)]
-pub struct LineageProof {
+pub struct Proof {
     pub parent_parent_coin_info: Bytes32,
     pub parent_inner_puzzle_hash: Option<Bytes32>,
     pub parent_amount: u64,
 }
 
-impl TryFrom<LineageProof> for chik_puzzle_types::LineageProof {
+impl Proof {
+    pub fn to_lineage_proof(&self) -> Result<Option<LineageProof>> {
+        Ok(self.clone().try_into().ok())
+    }
+}
+
+impl TryFrom<Proof> for LineageProof {
     type Error = Error;
 
-    fn try_from(value: LineageProof) -> Result<Self, Self::Error> {
+    fn try_from(value: Proof) -> Result<Self> {
         Ok(Self {
             parent_parent_coin_info: value.parent_parent_coin_info,
             parent_inner_puzzle_hash: value
@@ -60,6 +66,16 @@ impl TryFrom<LineageProof> for chik_puzzle_types::LineageProof {
 
 impl From<LineageProof> for Proof {
     fn from(value: LineageProof) -> Self {
+        Self {
+            parent_parent_coin_info: value.parent_parent_coin_info,
+            parent_inner_puzzle_hash: Some(value.parent_inner_puzzle_hash),
+            parent_amount: value.parent_amount,
+        }
+    }
+}
+
+impl From<Proof> for ProofRs {
+    fn from(value: Proof) -> Self {
         if let Some(parent_inner_puzzle_hash) = value.parent_inner_puzzle_hash {
             Self::Lineage(chik_puzzle_types::LineageProof {
                 parent_parent_coin_info: value.parent_parent_coin_info,
@@ -67,7 +83,7 @@ impl From<LineageProof> for Proof {
                 parent_amount: value.parent_amount,
             })
         } else {
-            Self::Eve(EveProof {
+            Self::Eve(EveProofRs {
                 parent_parent_coin_info: value.parent_parent_coin_info,
                 parent_amount: value.parent_amount,
             })
@@ -75,19 +91,29 @@ impl From<LineageProof> for Proof {
     }
 }
 
-impl From<Proof> for LineageProof {
-    fn from(value: Proof) -> Self {
+impl From<ProofRs> for Proof {
+    fn from(value: ProofRs) -> Self {
         match value {
-            Proof::Lineage(proof) => Self {
+            ProofRs::Lineage(proof) => Self {
                 parent_parent_coin_info: proof.parent_parent_coin_info,
                 parent_inner_puzzle_hash: Some(proof.parent_inner_puzzle_hash),
                 parent_amount: proof.parent_amount,
             },
-            Proof::Eve(proof) => Self {
+            ProofRs::Eve(proof) => Self {
                 parent_parent_coin_info: proof.parent_parent_coin_info,
                 parent_inner_puzzle_hash: None,
                 parent_amount: proof.parent_amount,
             },
         }
+    }
+}
+
+pub trait LineageProofExt {
+    fn to_proof(&self) -> Result<Proof>;
+}
+
+impl LineageProofExt for LineageProof {
+    fn to_proof(&self) -> Result<Proof> {
+        Ok((*self).into())
     }
 }

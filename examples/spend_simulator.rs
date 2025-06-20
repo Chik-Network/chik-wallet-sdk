@@ -1,4 +1,5 @@
 use chik_protocol::Coin;
+use chik_puzzle_types::Memos;
 use chik_sdk_driver::{SpendContext, StandardLayer};
 use chik_sdk_test::Simulator;
 use chik_sdk_types::Conditions;
@@ -16,7 +17,7 @@ fn main() -> anyhow::Result<()> {
     let ctx = &mut SpendContext::new();
 
     let conditions = Conditions::new()
-        .create_coin(alice.puzzle_hash, 900, None)
+        .create_coin(alice.puzzle_hash, 900, Memos::None)
         .reserve_fee(100);
 
     StandardLayer::new(alice.pk).spend(ctx, alice.coin, conditions)?;

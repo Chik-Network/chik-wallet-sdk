@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use chik_protocol::Bytes32;
 use chik_puzzle_types::singleton::SingletonStruct;
 use hex_literal::hex;
@@ -21,12 +23,17 @@ impl SingletonMember {
 }
 
 impl Mod for SingletonMember {
-    const MOD_REVEAL: &[u8] = &SINGLETON_MEMBER;
-    const MOD_HASH: TreeHash = SINGLETON_MEMBER_HASH;
+    fn mod_reveal() -> Cow<'static, [u8]> {
+        Cow::Borrowed(&SINGLETON_MEMBER)
+    }
+
+    fn mod_hash() -> TreeHash {
+        SINGLETON_MEMBER_HASH
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ToKlvm, FromKlvm)]
-#[klvm(solution)]
+#[klvm(list)]
 pub struct SingletonMemberSolution {
     pub singleton_inner_puzzle_hash: Bytes32,
     pub singleton_amount: u64,

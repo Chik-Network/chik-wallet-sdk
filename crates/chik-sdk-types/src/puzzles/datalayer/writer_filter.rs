@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use hex_literal::hex;
 use klvm_traits::{FromKlvm, ToKlvm};
 use klvm_utils::{CurriedProgram, ToTreeHash, TreeHash};
@@ -47,6 +49,11 @@ pub struct WriterLayerSolution<I> {
 }
 
 impl<I> Mod for WriterLayerArgs<I> {
-    const MOD_REVEAL: &[u8] = &WRITER_LAYER_PUZZLE;
-    const MOD_HASH: TreeHash = WRITER_LAYER_PUZZLE_HASH;
+    fn mod_reveal() -> Cow<'static, [u8]> {
+        Cow::Borrowed(&WRITER_LAYER_PUZZLE)
+    }
+
+    fn mod_hash() -> TreeHash {
+        WRITER_LAYER_PUZZLE_HASH
+    }
 }

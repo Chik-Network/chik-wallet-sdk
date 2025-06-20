@@ -1,29 +1,24 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+};
 
 use chik_protocol::{Bytes32, Coin, CoinSpend, Program};
-use chik_puzzles::{
-    NFT_METADATA_UPDATER_DEFAULT, NFT_METADATA_UPDATER_DEFAULT_HASH, SETTLEMENT_PAYMENT,
-    SETTLEMENT_PAYMENT_HASH, SINGLETON_LAUNCHER, SINGLETON_LAUNCHER_HASH,
-};
-use chik_sdk_types::{run_puzzle, Conditions, Memos, Mod};
+use chik_sdk_types::{conditions::Memos, run_puzzle, Conditions, Mod};
 use klvm_traits::{klvm_quote, FromKlvm, ToKlvm};
 use klvm_utils::{tree_hash, CurriedProgram, TreeHash};
-use klvmr::{serde::node_from_bytes, Allocator, NodePtr};
-
-#[cfg(feature = "experimental-vaults")]
-use chik_sdk_types::{
-    FORCE_ASSERT_COIN_ANNOUNCEMENT_PUZZLE, FORCE_ASSERT_COIN_ANNOUNCEMENT_PUZZLE_HASH,
-    FORCE_COIN_MESSAGE_PUZZLE, FORCE_COIN_MESSAGE_PUZZLE_HASH,
-    PREVENT_MULTIPLE_CREATE_COINS_PUZZLE, PREVENT_MULTIPLE_CREATE_COINS_PUZZLE_HASH,
+use klvmr::{
+    serde::{node_from_bytes, node_to_bytes, node_to_bytes_backrefs},
+    Allocator, NodePtr,
 };
 
-use crate::{DriverError, Spend};
+use crate::{DriverError, HashedPtr, Spend};
 
 /// A wrapper around [`Allocator`] that caches puzzles and keeps track of a list of [`CoinSpend`].
 /// It's used to construct spend bundles in an easy and efficient way.
 #[derive(Debug, Default)]
 pub struct SpendContext {
-    pub allocator: Allocator,
+    allocator: Allocator,
     puzzles: HashMap<TreeHash, NodePtr>,
     coin_spends: Vec<CoinSpend>,
 }
@@ -63,6 +58,15 @@ impl SpendContext {
         Ok(value.to_klvm(&mut self.allocator)?)
     }
 
+    /// Allocate a new node and return its pointer pre-hashed.
+    pub fn alloc_hashed<T>(&mut self, value: &T) -> Result<HashedPtr, DriverError>
+    where
+        T: ToKlvm<Allocator>,
+    {
+        let ptr = value.to_klvm(&mut self.allocator)?;
+        Ok(HashedPtr::from_ptr(self, ptr))
+    }
+
     /// Extract a value from a node pointer.
     pub fn extract<T>(&self, ptr: NodePtr) -> Result<T, DriverError>
     where
@@ -81,31 +85,40 @@ impl SpendContext {
         Ok(run_puzzle(&mut self.allocator, puzzle, solution)?)
     }
 
-    /// Serialize a value and return a `Program`.
+    /// Allocate a value and serialize it into a [`Program`].
     pub fn serialize<T>(&mut self, value: &T) -> Result<Program, DriverError>
     where
         T: ToKlvm<Allocator>,
     {
         let ptr = value.to_klvm(&mut self.allocator)?;
-        Ok(Program::from_klvm(&self.allocator, ptr)?)
+        Ok(node_to_bytes(&self.allocator, ptr)?.into())
+    }
+
+    /// Allocate a value and serialize it into a [`Program`] with back references enabled.
+    pub fn serialize_with_backrefs<T>(&mut self, value: &T) -> Result<Program, DriverError>
+    where
+        T: ToKlvm<Allocator>,
+    {
+        let ptr = value.to_klvm(&mut self.allocator)?;
+        Ok(node_to_bytes_backrefs(&self.allocator, ptr)?.into())
     }
 
     pub fn memos<T>(&mut self, value: &T) -> Result<Memos<NodePtr>, DriverError>
     where
         T: ToKlvm<Allocator>,
     {
-        Ok(Memos::new(self.alloc(value)?))
+        Ok(Memos::Some(self.alloc(value)?))
     }
 
     pub fn hint(&mut self, hint: Bytes32) -> Result<Memos<NodePtr>, DriverError> {
-        Ok(Memos::hint(&mut self.allocator, hint)?)
+        self.memos(&[hint])
     }
 
     pub fn alloc_mod<T>(&mut self) -> Result<NodePtr, DriverError>
     where
         T: Mod,
     {
-        self.puzzle(T::MOD_HASH, T::MOD_REVEAL)
+        self.puzzle(T::mod_hash(), T::mod_reveal().as_ref())
     }
 
     pub fn curry<T>(&mut self, args: T) -> Result<NodePtr, DriverError>
@@ -119,53 +132,10 @@ impl SpendContext {
         })
     }
 
-    pub fn nft_metadata_updater(&mut self) -> Result<NodePtr, DriverError> {
-        self.puzzle(
-            NFT_METADATA_UPDATER_DEFAULT_HASH.into(),
-            &NFT_METADATA_UPDATER_DEFAULT,
-        )
-    }
-
-    pub fn singleton_launcher(&mut self) -> Result<NodePtr, DriverError> {
-        self.puzzle(SINGLETON_LAUNCHER_HASH.into(), &SINGLETON_LAUNCHER)
-    }
-
-    pub fn settlement_payments_puzzle(&mut self) -> Result<NodePtr, DriverError> {
-        self.puzzle(SETTLEMENT_PAYMENT_HASH.into(), &SETTLEMENT_PAYMENT)
-    }
-
-    #[cfg(feature = "experimental-vaults")]
-    pub fn force_coin_message_puzzle(&mut self) -> Result<NodePtr, DriverError> {
-        self.puzzle(FORCE_COIN_MESSAGE_PUZZLE_HASH, &FORCE_COIN_MESSAGE_PUZZLE)
-    }
-
-    #[cfg(feature = "experimental-vaults")]
-    pub fn force_assert_coin_announcement_puzzle(&mut self) -> Result<NodePtr, DriverError> {
-        self.puzzle(
-            FORCE_ASSERT_COIN_ANNOUNCEMENT_PUZZLE_HASH,
-            &FORCE_ASSERT_COIN_ANNOUNCEMENT_PUZZLE,
-        )
-    }
-
-    #[cfg(feature = "experimental-vaults")]
-    pub fn prevent_multiple_create_coins_puzzle(&mut self) -> Result<NodePtr, DriverError> {
-        self.puzzle(
-            PREVENT_MULTIPLE_CREATE_COINS_PUZZLE_HASH,
-            &PREVENT_MULTIPLE_CREATE_COINS_PUZZLE,
-        )
-    }
-
-    /// Preload a puzzle into the cache.
-    pub fn preload(&mut self, puzzle_hash: TreeHash, ptr: NodePtr) {
-        self.puzzles.insert(puzzle_hash, ptr);
-    }
-
-    /// Checks whether a puzzle is in the cache.
     pub fn get_puzzle(&self, puzzle_hash: &TreeHash) -> Option<NodePtr> {
         self.puzzles.get(puzzle_hash).copied()
     }
 
-    /// Get a puzzle from the cache or allocate a new one.
     pub fn puzzle(
         &mut self,
         puzzle_hash: TreeHash,
@@ -183,6 +153,20 @@ impl SpendContext {
     pub fn delegated_spend(&mut self, conditions: Conditions) -> Result<Spend, DriverError> {
         let puzzle = self.alloc(&klvm_quote!(conditions))?;
         Ok(Spend::new(puzzle, NodePtr::NIL))
+    }
+}
+
+impl Deref for SpendContext {
+    type Target = Allocator;
+
+    fn deref(&self) -> &Self::Target {
+        &self.allocator
+    }
+}
+
+impl DerefMut for SpendContext {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.allocator
     }
 }
 

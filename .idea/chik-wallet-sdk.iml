@@ -18,6 +18,11 @@
       <sourceFolder url="file://$MODULE_DIR$/pyo3/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/wasm/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/binky-macro/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/binky/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/chik-sdk-bindings/bindy-macro/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/chik-sdk-bindings/bindy/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/chik-sdk-types/derive/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.10" jdkType="Python SDK" />

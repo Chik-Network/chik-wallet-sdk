@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use chik_protocol::Bytes32;
 use hex_literal::hex;
 use klvm_traits::{FromKlvm, ToKlvm};
@@ -22,12 +24,17 @@ impl MofNArgs {
 }
 
 impl Mod for MofNArgs {
-    const MOD_REVEAL: &[u8] = &M_OF_N_PUZZLE;
-    const MOD_HASH: TreeHash = M_OF_N_PUZZLE_HASH;
+    fn mod_reveal() -> Cow<'static, [u8]> {
+        Cow::Borrowed(&M_OF_N_PUZZLE)
+    }
+
+    fn mod_hash() -> TreeHash {
+        M_OF_N_PUZZLE_HASH
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ToKlvm, FromKlvm)]
-#[klvm(solution)]
+#[klvm(list)]
 pub struct MofNSolution<P> {
     pub proofs: P,
 }

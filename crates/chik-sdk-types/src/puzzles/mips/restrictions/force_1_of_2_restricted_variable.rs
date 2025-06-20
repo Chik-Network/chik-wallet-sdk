@@ -1,9 +1,14 @@
+use std::borrow::Cow;
+
 use chik_protocol::Bytes32;
 use hex_literal::hex;
 use klvm_traits::{FromKlvm, ToKlvm};
 use klvm_utils::{ToTreeHash, TreeHash};
 
-use crate::{Mod, DELEGATED_FEEDER_PUZZLE_HASH, INDEX_WRAPPER_HASH, ONE_OF_N_PUZZLE_HASH};
+use crate::{
+    puzzles::{DELEGATED_FEEDER_PUZZLE_HASH, INDEX_WRAPPER_HASH, ONE_OF_N_PUZZLE_HASH},
+    Mod,
+};
 
 use super::RESTRICTIONS_PUZZLE_HASH;
 
@@ -41,12 +46,17 @@ impl Force1of2RestrictedVariable {
 }
 
 impl Mod for Force1of2RestrictedVariable {
-    const MOD_REVEAL: &[u8] = &FORCE_1_OF_2_RESTRICTED_VARIABLE_PUZZLE;
-    const MOD_HASH: TreeHash = FORCE_1_OF_2_RESTRICTED_VARIABLE_PUZZLE_HASH;
+    fn mod_reveal() -> Cow<'static, [u8]> {
+        Cow::Borrowed(&FORCE_1_OF_2_RESTRICTED_VARIABLE_PUZZLE)
+    }
+
+    fn mod_hash() -> TreeHash {
+        FORCE_1_OF_2_RESTRICTED_VARIABLE_PUZZLE_HASH
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ToKlvm, FromKlvm)]
-#[klvm(solution)]
+#[klvm(list)]
 pub struct Force1of2RestrictedVariableSolution {
     pub new_right_side_member_hash: Bytes32,
 }

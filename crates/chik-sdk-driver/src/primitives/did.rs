@@ -2,7 +2,7 @@ use chik_protocol::{Bytes32, Coin};
 use chik_puzzle_types::{
     did::DidSolution,
     singleton::{SingletonArgs, SingletonSolution},
-    LineageProof, Proof,
+    LineageProof, Memos, Proof,
 };
 use chik_sdk_types::{run_puzzle, Condition, Conditions};
 use klvm_traits::{FromKlvm, ToKlvm};
@@ -18,11 +18,31 @@ mod did_launcher;
 
 pub use did_info::*;
 
+/// Contains all information needed to spend the outer puzzles of DID coins.
+/// The [`DidInfo`] is used to construct the puzzle, but the [`Proof`] is needed for the solution.
+///
+/// The only thing missing to create a valid coin spend is the inner puzzle and solution.
+/// However, this is handled separately to provide as much flexibility as possible.
+///
+/// This type should contain all of the information you need to store in a database for later.
+/// As long as you can figure out what puzzle the p2 puzzle hash corresponds to and spend it,
+/// you have enough information to spend the DID coin.
 #[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Did<M> {
+    /// The coin that this [`Did`] represents. Its puzzle hash should match the [`DidInfo::puzzle_hash`].
     pub coin: Coin,
+
+    /// The proof is needed by the singleton puzzle to prove that this coin is a legitimate singleton.
+    /// It's typically obtained by looking up and parsing the parent coin.
+    ///
+    /// Note that while the proof will be a [`LineageProof`] for most coins, for the first singleton
+    /// in the lineage it will be an [`EveProof`](chik_puzzle_types::EveProof) instead.
+    /// However, the eve coin is typically unhinted and spent in the same transaction as it was created,
+    /// so this is not relevant for database storage or syncing unspent coins.
     pub proof: Proof,
+
+    /// The information needed to construct the outer puzzle of a DID. See [`DidInfo`] for more details.
     pub info: DidInfo<M>,
 }
 
@@ -44,7 +64,7 @@ impl<M> Did<M>
 where
     M: ToTreeHash,
 {
-    /// Returns the lineage proof that would be used by the child.
+    /// Creates a [`LineageProof`] for which would be valid for any children created by this [`Did`].
     pub fn child_lineage_proof(&self) -> LineageProof {
         LineageProof {
             parent_parent_coin_info: self.coin.parent_coin_info,
@@ -53,29 +73,37 @@ where
         }
     }
 
-    /// Creates a wrapped spendable DID for the child.
-    pub fn wrapped_child<N>(&self, p2_puzzle_hash: Bytes32, metadata: N) -> Did<N>
+    /// Creates a new [`Did`] that represents a child of this one.
+    pub fn child<N>(&self, p2_puzzle_hash: Bytes32, metadata: N) -> Did<N>
     where
         M: Clone,
         N: ToTreeHash,
     {
-        let info = self
-            .info
-            .clone()
-            .with_p2_puzzle_hash(p2_puzzle_hash)
-            .with_metadata(metadata);
+        let mut info = self.info.clone().with_metadata(metadata);
+        info.p2_puzzle_hash = p2_puzzle_hash;
+        self.child_with(info)
+    }
 
-        let inner_puzzle_hash = info.inner_puzzle_hash();
-
-        Did {
-            coin: Coin::new(
+    /// Creates a new [`Did`] that represents a child of this one.
+    ///
+    /// You can specify the [`DidInfo`] to use for the child manually.
+    /// In most cases, you will want to use [`Did::child`] instead.
+    ///
+    /// It's important to use the right [`DidInfo`] beforehand, otherwise
+    /// the puzzle hash of the child will not match the one expected by the coin.
+    pub fn child_with<N>(&self, info: DidInfo<N>) -> Did<N>
+    where
+        N: ToTreeHash,
+    {
+        Did::new(
+            Coin::new(
                 self.coin.coin_id(),
-                SingletonArgs::curry_tree_hash(info.launcher_id, inner_puzzle_hash).into(),
+                SingletonArgs::curry_tree_hash(info.launcher_id, info.inner_puzzle_hash()).into(),
                 self.coin.amount,
             ),
-            proof: Proof::Lineage(self.child_lineage_proof()),
+            Proof::Lineage(self.child_lineage_proof()),
             info,
-        }
+        )
     }
 }
 
@@ -83,7 +111,8 @@ impl<M> Did<M>
 where
     M: ToKlvm<Allocator> + FromKlvm<Allocator> + Clone,
 {
-    /// Creates a coin spend for this DID.
+    /// Spends this DID coin with the provided inner spend.
+    /// The spend is added to the [`SpendContext`] for convenience.
     pub fn spend(&self, ctx: &mut SpendContext, inner_spend: Spend) -> Result<(), DriverError> {
         let layers = self.info.clone().into_layers(inner_spend.puzzle);
 
@@ -102,7 +131,11 @@ where
         Ok(())
     }
 
-    /// Spends this DID with an inner puzzle that supports being spent with conditions.
+    /// Spends this DID coin with a [`Layer`] that supports [`SpendWithConditions`].
+    /// This is a building block for built in spend methods, but can also be used to spend
+    /// DID coins with conditions more easily.
+    ///
+    /// However, if you need full flexibility of the inner spend, you can use [`Did::spend`] instead.
     pub fn spend_with<I>(
         &self,
         ctx: &mut SpendContext,
@@ -116,9 +149,10 @@ where
         self.spend(ctx, inner_spend)
     }
 
-    /// Transfers this DID to a new p2 puzzle hash.
+    /// Transfers this DID coin to a new p2 puzzle hash.
     ///
-    /// Note: This does not update the metadata. You need to do an update spend to change the metadata.
+    /// This spend requires a [`Layer`] that supports [`SpendWithConditions`]. If it doesn't, you can
+    /// use [`Did::spend_with`] instead.
     pub fn transfer<I>(
         self,
         ctx: &mut SpendContext,
@@ -130,11 +164,8 @@ where
         M: ToTreeHash,
         I: SpendWithConditions,
     {
-        let new_inner_puzzle_hash = self
-            .info
-            .clone()
-            .with_p2_puzzle_hash(p2_puzzle_hash)
-            .inner_puzzle_hash();
+        let mut new_info = self.info.clone();
+        new_info.p2_puzzle_hash = p2_puzzle_hash;
 
         let memos = ctx.hint(p2_puzzle_hash)?;
 
@@ -142,18 +173,25 @@ where
             ctx,
             inner,
             extra_conditions.create_coin(
-                new_inner_puzzle_hash.into(),
+                new_info.inner_puzzle_hash().into(),
                 self.coin.amount,
-                Some(memos),
+                memos,
             ),
         )?;
 
         let metadata = self.info.metadata.clone();
 
-        Ok(self.wrapped_child(p2_puzzle_hash, metadata))
+        Ok(self.child(p2_puzzle_hash, metadata))
     }
 
-    /// Recreates this DID and outputs additional conditions via the inner puzzle.
+    /// Updates the metadata of this DID.
+    ///
+    /// Because DID coins aren't wrapped automatically, and due to the way they are parsed in wallets,
+    /// an additional update spend is needed. This additional spend is not handled by this method, so
+    /// you will need to do it manually.
+    ///
+    /// This spend requires a [`Layer`] that supports [`SpendWithConditions`]. If it doesn't, you can
+    /// use [`Did::spend_with`] instead.
     pub fn update_with_metadata<I, N>(
         self,
         ctx: &mut SpendContext,
@@ -177,17 +215,20 @@ where
         self.spend_with(
             ctx,
             inner,
-            extra_conditions.create_coin(
-                new_inner_puzzle_hash.into(),
-                self.coin.amount,
-                Some(memos),
-            ),
+            extra_conditions.create_coin(new_inner_puzzle_hash.into(), self.coin.amount, memos),
         )?;
 
-        Ok(self.wrapped_child(self.info.p2_puzzle_hash, metadata))
+        Ok(self.child(self.info.p2_puzzle_hash, metadata))
     }
 
-    /// Creates a new DID coin with the given metadata.
+    /// Spends the DID without changing its metadata or p2 puzzle hash.
+    ///
+    /// This can be done to "settle" the DID's updated metadata and make it parseable by wallets.
+    /// It's also useful if you just want to emit conditions from the DID, without transferring it.
+    /// For example, when assigning a DID to one or more NFTs you can use an update spend to do so.
+    ///
+    /// This spend requires a [`Layer`] that supports [`SpendWithConditions`]. If it doesn't, you can
+    /// use [`Did::spend_with`] instead.
     pub fn update<I>(
         self,
         ctx: &mut SpendContext,
@@ -207,6 +248,10 @@ impl<M> Did<M>
 where
     M: ToKlvm<Allocator> + FromKlvm<Allocator> + Clone,
 {
+    /// Parses the child of an [`Did`] from the parent coin spend.
+    ///
+    /// This relies on the child being hinted and having the same metadata as the parent.
+    /// If this is not the case, the DID cannot be parsed or spent without additional context.
     pub fn parse_child(
         allocator: &mut Allocator,
         parent_coin: Coin,
@@ -251,11 +296,11 @@ where
             return Err(DriverError::MissingChild);
         };
 
-        let Some(memos) = create_coin.memos else {
+        let Memos::Some(memos) = create_coin.memos else {
             return Err(DriverError::MissingHint);
         };
 
-        let (hint, _) = <(Bytes32, NodePtr)>::from_klvm(allocator, memos.value)?;
+        let (hint, _) = <(Bytes32, NodePtr)>::from_klvm(allocator, memos)?;
 
         let metadata_ptr = did_layer.metadata.to_klvm(allocator)?;
         let metadata_hash = tree_hash(allocator, metadata_ptr);
@@ -413,7 +458,7 @@ mod tests {
         alice_p2.spend(ctx, alice.coin, create_did)?;
         sim.spend_coins(ctx.take(), &[alice.sk])?;
 
-        let new_metadata = HashedPtr::from_ptr(&ctx.allocator, ctx.allocator.one());
+        let new_metadata = HashedPtr::from_ptr(ctx, ctx.one());
         let updated_did =
             did.update_with_metadata(ctx, &alice_p2, new_metadata, Conditions::default())?;
 

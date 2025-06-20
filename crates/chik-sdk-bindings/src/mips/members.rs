@@ -1,13 +1,17 @@
-use binky::Result;
+use bindy::Result;
+use chik_bls::PublicKey;
 use chik_protocol::Bytes32;
 use chik_sdk_driver::{member_puzzle_hash, MofN};
 use chik_sdk_types::{
-    BlsMember, FixedPuzzleMember, Mod, PasskeyMember, PasskeyMemberPuzzleAssert, Secp256k1Member,
-    Secp256k1MemberPuzzleAssert, Secp256r1Member, Secp256r1MemberPuzzleAssert, SingletonMember,
+    puzzles::{
+        BlsMember, FixedPuzzleMember, K1Member, K1MemberPuzzleAssert, PasskeyMember,
+        PasskeyMemberPuzzleAssert, R1Member, R1MemberPuzzleAssert, SingletonMember,
+    },
+    Mod,
 };
 use klvm_utils::TreeHash;
 
-use crate::{K1PublicKey, PublicKey, R1PublicKey};
+use crate::{K1PublicKey, R1PublicKey};
 
 use super::{convert_restrictions, Restriction};
 
@@ -72,9 +76,9 @@ pub fn k1_member_hash(
     member_hash(
         config,
         if fast_forward {
-            Secp256k1MemberPuzzleAssert::new(public_key.0).curry_tree_hash()
+            K1MemberPuzzleAssert::new(public_key.0).curry_tree_hash()
         } else {
-            Secp256k1Member::new(public_key.0).curry_tree_hash()
+            K1Member::new(public_key.0).curry_tree_hash()
         },
     )
 }
@@ -87,15 +91,15 @@ pub fn r1_member_hash(
     member_hash(
         config,
         if fast_forward {
-            Secp256r1MemberPuzzleAssert::new(public_key.0).curry_tree_hash()
+            R1MemberPuzzleAssert::new(public_key.0).curry_tree_hash()
         } else {
-            Secp256r1Member::new(public_key.0).curry_tree_hash()
+            R1Member::new(public_key.0).curry_tree_hash()
         },
     )
 }
 
 pub fn bls_member_hash(config: MemberConfig, public_key: PublicKey) -> Result<TreeHash> {
-    member_hash(config, BlsMember::new(public_key.0).curry_tree_hash())
+    member_hash(config, BlsMember::new(public_key).curry_tree_hash())
 }
 
 pub fn passkey_member_hash(

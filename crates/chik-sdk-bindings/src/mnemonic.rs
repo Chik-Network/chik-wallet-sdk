@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use binky::Result;
+use bindy::Result;
 use chik_protocol::Bytes;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;

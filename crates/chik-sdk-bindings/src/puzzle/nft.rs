@@ -1,0 +1,173 @@
+use std::sync::{Arc, Mutex};
+
+use bindy::Result;
+use chik_protocol::{Bytes32, Coin};
+use chik_puzzle_types::nft::NftMetadata;
+use chik_sdk_driver::{
+    HashedPtr, Nft as SdkNft, NftInfo as SdkNftInfo, NftMint as SdkNftMint, NftOwner, SpendContext,
+};
+use klvm_utils::TreeHash;
+use klvmr::Allocator;
+
+use crate::{AsProgram, AsPtr, Program, Proof};
+
+use super::Puzzle;
+
+#[derive(Clone)]
+pub struct Nft {
+    pub coin: Coin,
+    pub proof: Proof,
+    pub info: NftInfo,
+}
+
+impl Nft {
+    pub fn child_proof(&self) -> Result<Proof> {
+        let ctx = self.info.metadata.0.lock().unwrap();
+        Ok(self.as_ptr(&ctx).child_lineage_proof().into())
+    }
+
+    pub fn child(
+        &self,
+        p2_puzzle_hash: Bytes32,
+        current_owner: Option<Bytes32>,
+        metadata: Program,
+    ) -> Result<Self> {
+        let ctx = metadata.0.lock().unwrap();
+        Ok(self
+            .as_ptr(&ctx)
+            .child(p2_puzzle_hash, current_owner, metadata.as_ptr(&ctx))
+            .as_program(&metadata.0))
+    }
+
+    pub fn child_with(&self, info: NftInfo) -> Result<Self> {
+        let ctx = self.info.metadata.0.lock().unwrap();
+        Ok(self
+            .as_ptr(&ctx)
+            .child_with(info.as_ptr(&ctx))
+            .as_program(&self.info.metadata.0))
+    }
+}
+
+impl AsProgram for SdkNft<HashedPtr> {
+    type AsProgram = Nft;
+
+    fn as_program(&self, klvm: &Arc<Mutex<SpendContext>>) -> Self::AsProgram {
+        Nft {
+            coin: self.coin,
+            proof: self.proof.into(),
+            info: self.info.as_program(klvm),
+        }
+    }
+}
+
+impl AsPtr for Nft {
+    type AsPtr = SdkNft<HashedPtr>;
+
+    fn as_ptr(&self, allocator: &Allocator) -> Self::AsPtr {
+        SdkNft::new(
+            self.coin,
+            self.proof.clone().into(),
+            self.info.as_ptr(allocator),
+        )
+    }
+}
+
+#[derive(Clone)]
+pub struct NftInfo {
+    pub launcher_id: Bytes32,
+    pub metadata: Program,
+    pub metadata_updater_puzzle_hash: Bytes32,
+    pub current_owner: Option<Bytes32>,
+    pub royalty_puzzle_hash: Bytes32,
+    pub royalty_basis_points: u16,
+    pub p2_puzzle_hash: Bytes32,
+}
+
+impl NftInfo {
+    pub fn inner_puzzle_hash(&self) -> Result<TreeHash> {
+        let ctx = self.metadata.0.lock().unwrap();
+        Ok(self.as_ptr(&ctx).inner_puzzle_hash())
+    }
+
+    pub fn puzzle_hash(&self) -> Result<TreeHash> {
+        let ctx = self.metadata.0.lock().unwrap();
+        Ok(self.as_ptr(&ctx).puzzle_hash())
+    }
+}
+
+impl AsProgram for SdkNftInfo<HashedPtr> {
+    type AsProgram = NftInfo;
+
+    fn as_program(&self, klvm: &Arc<Mutex<SpendContext>>) -> Self::AsProgram {
+        NftInfo {
+            launcher_id: self.launcher_id,
+            metadata: self.metadata.as_program(klvm),
+            metadata_updater_puzzle_hash: self.metadata_updater_puzzle_hash,
+            current_owner: self.current_owner,
+            royalty_puzzle_hash: self.royalty_puzzle_hash,
+            royalty_basis_points: self.royalty_basis_points,
+            p2_puzzle_hash: self.p2_puzzle_hash,
+        }
+    }
+}
+
+impl AsPtr for NftInfo {
+    type AsPtr = SdkNftInfo<HashedPtr>;
+
+    fn as_ptr(&self, allocator: &Allocator) -> Self::AsPtr {
+        SdkNftInfo {
+            launcher_id: self.launcher_id,
+            metadata: self.metadata.as_ptr(allocator),
+            metadata_updater_puzzle_hash: self.metadata_updater_puzzle_hash,
+            current_owner: self.current_owner,
+            royalty_puzzle_hash: self.royalty_puzzle_hash,
+            royalty_basis_points: self.royalty_basis_points,
+            p2_puzzle_hash: self.p2_puzzle_hash,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ParsedNft {
+    pub info: NftInfo,
+    pub p2_puzzle: Puzzle,
+}
+
+pub trait NftMetadataExt {}
+
+impl NftMetadataExt for NftMetadata {}
+
+#[derive(Clone)]
+pub struct NftMint {
+    pub metadata: Program,
+    pub metadata_updater_puzzle_hash: Bytes32,
+    pub p2_puzzle_hash: Bytes32,
+    pub royalty_puzzle_hash: Bytes32,
+    pub royalty_basis_points: u16,
+    pub owner: Option<NftOwner>,
+}
+
+impl AsPtr for NftMint {
+    type AsPtr = SdkNftMint<HashedPtr>;
+
+    fn as_ptr(&self, allocator: &Allocator) -> Self::AsPtr {
+        SdkNftMint {
+            metadata: self.metadata.as_ptr(allocator),
+            metadata_updater_puzzle_hash: self.metadata_updater_puzzle_hash,
+            p2_puzzle_hash: self.p2_puzzle_hash,
+            royalty_puzzle_hash: self.royalty_puzzle_hash,
+            royalty_basis_points: self.royalty_basis_points,
+            owner: self.owner,
+        }
+    }
+}
+
+pub trait NftOwnerExt {}
+
+impl NftOwnerExt for NftOwner {}
+
+#[derive(Clone)]
+pub struct MintedNfts {
+    pub nfts: Vec<Nft>,
+    pub parent_conditions: Vec<Program>,
+}

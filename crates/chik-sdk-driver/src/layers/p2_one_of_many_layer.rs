@@ -1,5 +1,5 @@
 use chik_protocol::Bytes32;
-use chik_sdk_types::{P2OneOfManyArgs, P2OneOfManySolution, P2_ONE_OF_MANY_PUZZLE_HASH};
+use chik_sdk_types::puzzles::{P2OneOfManyArgs, P2OneOfManySolution, P2_ONE_OF_MANY_PUZZLE_HASH};
 use klvm_traits::FromKlvm;
 use klvm_utils::{CurriedProgram, ToTreeHash, TreeHash};
 use klvmr::{Allocator, NodePtr};

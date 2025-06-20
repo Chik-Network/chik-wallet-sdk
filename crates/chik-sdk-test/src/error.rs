@@ -1,6 +1,6 @@
 use std::io;
 
-use chik_consensus::gen::validation_error::ErrorCode;
+use chik_consensus::validation_error::ErrorCode;
 use chik_sdk_signer::SignerError;
 use thiserror::Error;
 

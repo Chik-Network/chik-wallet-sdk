@@ -1,7 +1,10 @@
 use chik_protocol::{Bytes, Bytes32, CoinSpend};
 use chik_sdk_types::{
-    announcement_id, AssertCoinAnnouncement, AssertPuzzleAnnouncement, CreateCoinAnnouncement,
-    CreatePuzzleAnnouncement,
+    announcement_id,
+    conditions::{
+        AssertCoinAnnouncement, AssertPuzzleAnnouncement, CreateCoinAnnouncement,
+        CreatePuzzleAnnouncement,
+    },
 };
 use klvm_traits::{FromKlvm, ToKlvm};
 use klvmr::{reduction::Reduction, run_program, Allocator, ChikDialect, NodePtr};

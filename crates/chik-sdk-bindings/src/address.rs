@@ -1,4 +1,4 @@
-use binky::Result;
+use bindy::Result;
 use chik_protocol::Bytes32;
 
 #[derive(Clone)]

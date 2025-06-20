@@ -1,7 +1,10 @@
 use chik_protocol::Bytes32;
 use chik_puzzle_types::{nft::NftStateLayerArgs, EveProof, Proof};
 use chik_puzzles::NFT_STATE_LAYER_HASH;
-use chik_sdk_types::{Conditions, DelegationLayerArgs, DL_METADATA_UPDATER_PUZZLE_HASH};
+use chik_sdk_types::{
+    puzzles::{DelegationLayerArgs, DL_METADATA_UPDATER_PUZZLE_HASH},
+    Conditions,
+};
 use klvm_traits::{FromKlvm, ToKlvm};
 use klvm_utils::{CurriedProgram, ToTreeHash, TreeHash};
 use klvmr::Allocator;
@@ -163,8 +166,7 @@ mod tests {
         let spends = ctx.take();
         for spend in spends.clone() {
             if spend.coin.coin_id() == datastore.info.launcher_id {
-                let new_datastore =
-                    DataStore::from_spend(&mut ctx.allocator, &spend, &[])?.unwrap();
+                let new_datastore = DataStore::from_spend(ctx, &spend, &[])?.unwrap();
 
                 assert_eq!(datastore, new_datastore);
             }

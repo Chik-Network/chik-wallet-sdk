@@ -1,6 +1,6 @@
 [package]
 name = "chik-sdk-signer"
-version = "0.21.0"
+version = "0.25.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Calculates the signatures required for coin spends in a transaction."

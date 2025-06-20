@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use chik_protocol::{Bytes, Bytes32};
 use chik_secp::{R1PublicKey, R1Signature};
 use hex_literal::hex;
@@ -19,12 +21,17 @@ impl PasskeyMemberPuzzleAssert {
 }
 
 impl Mod for PasskeyMemberPuzzleAssert {
-    const MOD_REVEAL: &[u8] = &PASSKEY_MEMBER_PUZZLE_ASSERT;
-    const MOD_HASH: TreeHash = PASSKEY_MEMBER_PUZZLE_ASSERT_HASH;
+    fn mod_reveal() -> Cow<'static, [u8]> {
+        Cow::Borrowed(&PASSKEY_MEMBER_PUZZLE_ASSERT)
+    }
+
+    fn mod_hash() -> TreeHash {
+        PASSKEY_MEMBER_PUZZLE_ASSERT_HASH
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, ToKlvm, FromKlvm)]
-#[klvm(solution)]
+#[klvm(list)]
 pub struct PasskeyMemberPuzzleAssertSolution {
     pub authenticator_data: Bytes,
     pub client_data_json: Bytes,

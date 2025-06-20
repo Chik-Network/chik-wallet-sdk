@@ -34,7 +34,7 @@ jobs:
         run: cargo install cargo-tarpaulin --locked
 
       - name: Run tests
-        run: cargo tarpaulin --release --workspace --exclude chik-wallet-sdk-napi --exclude chik-sdk-derive --exclude chik-wallet-sdk-py --exclude chik-wallet-sdk-wasm --exclude chik-sdk-bindings --exclude binky --exclude binky-macro --all-features --out xml
+        run: cargo tarpaulin --release --workspace --exclude chik-wallet-sdk-napi --exclude chik-sdk-derive --exclude chik-wallet-sdk-py --exclude chik-wallet-sdk-wasm --exclude chik-sdk-bindings --exclude bindy --exclude bindy-macro --all-features --out xml
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1

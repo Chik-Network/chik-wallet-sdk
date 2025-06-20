@@ -1,4 +1,5 @@
 use chik_protocol::{Bytes, Bytes32};
+use chik_puzzle_types::Memos;
 use chik_sdk_types::Condition;
 use klvm_traits::{klvm_quote, match_quote, FromKlvm, ToKlvm};
 use klvmr::{Allocator, NodePtr};
@@ -61,11 +62,11 @@ impl Layer for OracleLayer {
         }
 
         let conditions: Vec<Condition<NodePtr>> = vec![
-            Condition::create_coin(self.oracle_puzzle_hash, self.oracle_fee, None),
+            Condition::create_coin(self.oracle_puzzle_hash, self.oracle_fee, Memos::None),
             Condition::create_puzzle_announcement(Bytes::new("$".into())),
         ];
 
-        Ok(klvm_quote!(conditions).to_klvm(&mut ctx.allocator)?)
+        Ok(klvm_quote!(conditions).to_klvm(ctx)?)
     }
 
     fn construct_solution(

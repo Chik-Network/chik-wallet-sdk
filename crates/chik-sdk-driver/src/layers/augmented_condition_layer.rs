@@ -1,5 +1,7 @@
+use chik_puzzles::AUGMENTED_CONDITION_HASH;
 use chik_sdk_types::{
-    AugmentedConditionArgs, AugmentedConditionSolution, Condition, AUGMENTED_CONDITION_PUZZLE_HASH,
+    puzzles::{AugmentedConditionArgs, AugmentedConditionSolution},
+    Condition,
 };
 use klvm_traits::{FromKlvm, ToKlvm};
 use klvmr::{Allocator, NodePtr};
@@ -25,7 +27,7 @@ where
             return Ok(None);
         };
 
-        if puzzle.mod_hash != AUGMENTED_CONDITION_PUZZLE_HASH {
+        if puzzle.mod_hash != AUGMENTED_CONDITION_HASH.into() {
             return Ok(None);
         }
 

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use chik_protocol::Bytes32;
 use hex_literal::hex;
 use klvm_traits::{FromKlvm, ToKlvm};
@@ -18,12 +20,17 @@ impl OneOfNArgs {
 }
 
 impl Mod for OneOfNArgs {
-    const MOD_REVEAL: &[u8] = &ONE_OF_N_PUZZLE;
-    const MOD_HASH: TreeHash = ONE_OF_N_PUZZLE_HASH;
+    fn mod_reveal() -> Cow<'static, [u8]> {
+        Cow::Borrowed(&ONE_OF_N_PUZZLE)
+    }
+
+    fn mod_hash() -> TreeHash {
+        ONE_OF_N_PUZZLE_HASH
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, ToKlvm, FromKlvm)]
-#[klvm(solution)]
+#[klvm(list)]
 pub struct OneOfNSolution<P, S> {
     pub merkle_proof: MerkleProof,
     pub member_puzzle: P,

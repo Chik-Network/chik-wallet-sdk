@@ -1,83 +1,86 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 
-use binky::Result;
-use chik_bls as bls;
+use bindy::Result;
+use chik_bls::PublicKey;
 use chik_protocol::{Bytes, Bytes32};
 use chik_sdk_driver::SpendContext;
-use chik_sdk_types::{self as types, Memos};
+use chik_sdk_types::conditions::{self, Memos, TradePrice};
 use klvm_traits::{FromKlvm, ToKlvm};
 use klvmr::NodePtr;
 use paste::paste;
 
-use crate::{Klvm, Program, PublicKey};
+use crate::{Klvm, Program};
 
 trait Convert<T> {
-    fn convert(self, klvm: &Arc<RwLock<SpendContext>>) -> Result<T>;
+    fn convert(self, klvm: &Arc<Mutex<SpendContext>>) -> Result<T>;
 }
 
 impl Convert<Program> for NodePtr {
-    fn convert(self, klvm: &Arc<RwLock<SpendContext>>) -> Result<Program> {
+    fn convert(self, klvm: &Arc<Mutex<SpendContext>>) -> Result<Program> {
         Ok(Program(klvm.clone(), self))
     }
 }
 
 impl Convert<NodePtr> for Program {
-    fn convert(self, _klvm: &Arc<RwLock<SpendContext>>) -> Result<NodePtr> {
+    fn convert(self, _klvm: &Arc<Mutex<SpendContext>>) -> Result<NodePtr> {
         Ok(self.1)
     }
 }
 
-impl Convert<PublicKey> for bls::PublicKey {
-    fn convert(self, _klvm: &Arc<RwLock<SpendContext>>) -> Result<PublicKey> {
-        Ok(PublicKey(self))
-    }
-}
-
-impl Convert<bls::PublicKey> for PublicKey {
-    fn convert(self, _klvm: &Arc<RwLock<SpendContext>>) -> Result<bls::PublicKey> {
-        Ok(self.0)
+impl Convert<PublicKey> for PublicKey {
+    fn convert(self, _klvm: &Arc<Mutex<SpendContext>>) -> Result<PublicKey> {
+        Ok(self)
     }
 }
 
 impl Convert<Bytes> for Bytes {
-    fn convert(self, _klvm: &Arc<RwLock<SpendContext>>) -> Result<Bytes> {
+    fn convert(self, _klvm: &Arc<Mutex<SpendContext>>) -> Result<Bytes> {
         Ok(self)
     }
 }
 
 impl Convert<Bytes32> for Bytes32 {
-    fn convert(self, _klvm: &Arc<RwLock<SpendContext>>) -> Result<Bytes32> {
+    fn convert(self, _klvm: &Arc<Mutex<SpendContext>>) -> Result<Bytes32> {
         Ok(self)
     }
 }
 
 impl Convert<u64> for u64 {
-    fn convert(self, _klvm: &Arc<RwLock<SpendContext>>) -> Result<u64> {
+    fn convert(self, _klvm: &Arc<Mutex<SpendContext>>) -> Result<u64> {
         Ok(self)
     }
 }
 
 impl Convert<u32> for u32 {
-    fn convert(self, _klvm: &Arc<RwLock<SpendContext>>) -> Result<u32> {
+    fn convert(self, _klvm: &Arc<Mutex<SpendContext>>) -> Result<u32> {
         Ok(self)
     }
 }
 
 impl Convert<u8> for u8 {
-    fn convert(self, _klvm: &Arc<RwLock<SpendContext>>) -> Result<u8> {
+    fn convert(self, _klvm: &Arc<Mutex<SpendContext>>) -> Result<u8> {
         Ok(self)
     }
 }
 
-impl Convert<Memos<NodePtr>> for Program {
-    fn convert(self, _klvm: &Arc<RwLock<SpendContext>>) -> Result<Memos<NodePtr>> {
-        Ok(Memos::new(self.1))
+impl Convert<TradePrice> for TradePrice {
+    fn convert(self, _klvm: &Arc<Mutex<SpendContext>>) -> Result<TradePrice> {
+        Ok(self)
     }
 }
 
-impl Convert<Program> for Memos<NodePtr> {
-    fn convert(self, klvm: &Arc<RwLock<SpendContext>>) -> Result<Program> {
-        Ok(Program(klvm.clone(), self.value))
+impl Convert<Memos<NodePtr>> for Option<Program> {
+    fn convert(self, _klvm: &Arc<Mutex<SpendContext>>) -> Result<Memos<NodePtr>> {
+        Ok(self.map_or(Memos::None, |program| Memos::Some(program.1)))
+    }
+}
+
+impl Convert<Option<Program>> for Memos<NodePtr> {
+    fn convert(self, klvm: &Arc<Mutex<SpendContext>>) -> Result<Option<Program>> {
+        Ok(match self {
+            Memos::None => None,
+            Memos::Some(value) => Some(Program(klvm.clone(), value)),
+        })
     }
 }
 
@@ -85,7 +88,7 @@ impl<T, U> Convert<Vec<U>> for Vec<T>
 where
     T: Convert<U>,
 {
-    fn convert(self, klvm: &Arc<RwLock<SpendContext>>) -> Result<Vec<U>> {
+    fn convert(self, klvm: &Arc<Mutex<SpendContext>>) -> Result<Vec<U>> {
         self.into_iter()
             .map(|value| T::convert(value, klvm))
             .collect()
@@ -96,7 +99,7 @@ impl<T, U> Convert<Option<U>> for Option<T>
 where
     T: Convert<U>,
 {
-    fn convert(self, klvm: &Arc<RwLock<SpendContext>>) -> Result<Option<U>> {
+    fn convert(self, klvm: &Arc<Mutex<SpendContext>>) -> Result<Option<U>> {
         self.map(|value| T::convert(value, klvm)).transpose()
     }
 }
@@ -111,10 +114,10 @@ macro_rules! conditions {
         $( paste! {
             impl Klvm {
                 pub fn $function( &self, $( $name: $ty ),* ) -> Result<Program> {
-                    let mut ctx = self.0.write().unwrap();
+                    let mut ctx = self.0.lock().unwrap();
                     $( let $name = Convert::convert($name, &self.0)?; )*
-                    let ptr = types::$condition $( ::< $( $generic ),* > )? ::new( $( $name ),* )
-                    .to_klvm(&mut ctx.allocator)?;
+                    let ptr = conditions::$condition $( ::< $( $generic ),* > )? ::new( $( $name ),* )
+                    .to_klvm(&mut **ctx)?;
                     Ok(Program(self.0.clone(), ptr))
                 }
             }
@@ -122,9 +125,9 @@ macro_rules! conditions {
             impl Program {
                 #[allow(unused)]
                 pub fn [< parse_ $function >]( &self ) -> Result<Option<$condition>> {
-                    let ctx = self.0.read().unwrap();
+                    let ctx = self.0.lock().unwrap();
 
-                    let Some(condition) = types::$condition $( ::< $( $generic ),* > )? ::from_klvm(&ctx.allocator, self.1).ok() else {
+                    let Some(condition) = conditions::$condition $( ::< $( $generic ),* > )? ::from_klvm(&**ctx, self.1).ok() else {
                         return Ok(None);
                     };
 
@@ -242,5 +245,20 @@ conditions!(
     },
     Softfork<NodePtr> {
         softfork(cost: u64, rest: Program)
+    },
+    MeltSingleton {
+        melt_singleton()
+    },
+    TransferNft {
+        transfer_nft(launcher_id: Option<Bytes32>, trade_prices: Vec<TradePrice>, singleton_inner_puzzle_hash: Option<Bytes32>)
+    },
+    RunCatTail<NodePtr, NodePtr> {
+        run_cat_tail(program: Program, solution: Program)
+    },
+    UpdateNftMetadata<NodePtr, NodePtr> {
+        update_nft_metadata(updater_puzzle_reveal: Program, updater_solution: Program)
+    },
+    UpdateDataStoreMerkleRoot {
+        update_data_store_merkle_root(new_merkle_root: Bytes32, memos: Vec<Bytes>)
     },
 );

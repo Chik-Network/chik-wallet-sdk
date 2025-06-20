@@ -4,11 +4,14 @@ use crate::{
 use chik_protocol::{Bytes, Bytes32};
 use chik_puzzle_types::nft::NftStateLayerArgs;
 use chik_sdk_types::{
-    DelegationLayerArgs, MerkleTree, WriterLayerArgs, DELEGATION_LAYER_PUZZLE_HASH,
-    DL_METADATA_UPDATER_PUZZLE_HASH,
+    puzzles::{
+        DelegationLayerArgs, WriterLayerArgs, DELEGATION_LAYER_PUZZLE_HASH,
+        DL_METADATA_UPDATER_PUZZLE_HASH,
+    },
+    MerkleTree,
 };
 use klvm_traits::{FromKlvm, FromKlvmError, KlvmDecoder, KlvmEncoder, Raw, ToKlvm, ToKlvmError};
-use klvm_utils::{tree_hash, CurriedProgram, ToTreeHash, TreeHash};
+use klvm_utils::{CurriedProgram, ToTreeHash, TreeHash};
 use klvmr::Allocator;
 use num_bigint::BigInt;
 
@@ -280,7 +283,7 @@ pub fn get_merkle_tree(
                     .ok_or(DriverError::OddOracleFee)?
                     .construct_puzzle(ctx)?;
 
-                leaves.push(tree_hash(&ctx.allocator, oracle_full_puzzle_ptr).into());
+                leaves.push(ctx.tree_hash(oracle_full_puzzle_ptr).into());
             }
         }
     }

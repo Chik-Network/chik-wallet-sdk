@@ -1,5 +1,8 @@
 use chik_puzzle_types::standard::StandardSolution;
-use chik_sdk_types::{Conditions, WriterLayerArgs, WriterLayerSolution, WRITER_LAYER_PUZZLE_HASH};
+use chik_sdk_types::{
+    puzzles::{WriterLayerArgs, WriterLayerSolution, WRITER_LAYER_PUZZLE_HASH},
+    Conditions,
+};
 use klvm_traits::{klvm_quote, FromKlvm};
 use klvm_utils::{ToTreeHash, TreeHash};
 use klvmr::{Allocator, NodePtr};

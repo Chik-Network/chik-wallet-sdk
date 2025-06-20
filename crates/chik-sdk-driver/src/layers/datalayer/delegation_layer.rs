@@ -1,5 +1,7 @@
 use chik_protocol::Bytes32;
-use chik_sdk_types::{DelegationLayerArgs, DelegationLayerSolution, DELEGATION_LAYER_PUZZLE_HASH};
+use chik_sdk_types::puzzles::{
+    DelegationLayerArgs, DelegationLayerSolution, DELEGATION_LAYER_PUZZLE_HASH,
+};
 use klvm_traits::FromKlvm;
 use klvmr::{Allocator, NodePtr};
 

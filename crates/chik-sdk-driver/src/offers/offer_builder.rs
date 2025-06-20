@@ -1,10 +1,13 @@
 use chik_protocol::{Bytes32, Coin, CoinSpend, SpendBundle};
-use chik_puzzle_types::offer::{NotarizedPayment, Payment, SettlementPaymentsSolution};
-use chik_sdk_types::{announcement_id, AssertPuzzleAnnouncement};
+use chik_puzzle_types::{
+    offer::{NotarizedPayment, Payment, SettlementPaymentsSolution},
+    Memos,
+};
+use chik_sdk_types::{announcement_id, conditions::AssertPuzzleAnnouncement};
 use indexmap::IndexMap;
 use klvm_traits::ToKlvm;
-use klvm_utils::tree_hash;
-use klvmr::Allocator;
+use klvm_utils::{tree_hash, ToTreeHash, TreeHash};
+use klvmr::{Allocator, NodePtr};
 
 use crate::{DriverError, Offer, ParsedOffer, Puzzle, SpendContext};
 
@@ -69,10 +72,13 @@ impl OfferBuilder<Make> {
     {
         let puzzle_ptr = ctx.alloc(puzzle)?;
         let puzzle_hash = ctx.tree_hash(puzzle_ptr).into();
-        let puzzle = Puzzle::parse(&ctx.allocator, puzzle_ptr);
+        let puzzle = Puzzle::parse(ctx, puzzle_ptr);
 
-        let notarized_payment = NotarizedPayment { nonce, payments };
-        let assertion = payment_assertion(puzzle_hash, &notarized_payment);
+        let notarized_payment = NotarizedPayment::new(nonce, payments);
+        let assertion = payment_assertion(
+            puzzle_hash,
+            &tree_hash_notarized_payment(ctx, &notarized_payment),
+        );
 
         self.data
             .requested_payments
@@ -168,10 +174,28 @@ impl OfferBuilder<Take> {
 
 pub fn payment_assertion(
     puzzle_hash: Bytes32,
-    notarized_payment: &NotarizedPayment,
+    notarized_payment: &NotarizedPayment<TreeHash>,
 ) -> AssertPuzzleAnnouncement {
-    let mut allocator = Allocator::new();
-    let notarized_payment_ptr = notarized_payment.to_klvm(&mut allocator).unwrap();
-    let notarized_payment_hash = tree_hash(&allocator, notarized_payment_ptr);
-    AssertPuzzleAnnouncement::new(announcement_id(puzzle_hash, notarized_payment_hash))
+    AssertPuzzleAnnouncement::new(announcement_id(puzzle_hash, notarized_payment.tree_hash()))
+}
+
+pub fn tree_hash_notarized_payment(
+    allocator: &Allocator,
+    notarized_payment: &NotarizedPayment<NodePtr>,
+) -> NotarizedPayment<TreeHash> {
+    NotarizedPayment {
+        nonce: notarized_payment.nonce,
+        payments: notarized_payment
+            .payments
+            .iter()
+            .map(|payment| Payment {
+                puzzle_hash: payment.puzzle_hash,
+                amount: payment.amount,
+                memos: match payment.memos {
+                    Memos::Some(memos) => Memos::Some(tree_hash(allocator, memos)),
+                    Memos::None => Memos::None,
+                },
+            })
+            .collect(),
+    }
 }

@@ -1,7 +1,10 @@
 use chik_protocol::Bytes32;
 use chik_puzzle_types::nft::{NftStateLayerArgs, NftStateLayerSolution};
 use chik_puzzles::NFT_STATE_LAYER_HASH;
-use chik_sdk_types::{run_puzzle, NewMetadataOutput, UpdateNftMetadata};
+use chik_sdk_types::{
+    conditions::{NewMetadataOutput, UpdateNftMetadata},
+    run_puzzle,
+};
 use klvm_traits::{FromKlvm, ToKlvm};
 use klvm_utils::{CurriedProgram, ToTreeHash, TreeHash};
 use klvmr::{Allocator, NodePtr};
@@ -12,7 +15,7 @@ use crate::{DriverError, Layer, Puzzle, SpendContext};
 /// It's typically an inner layer of the [`SingletonLayer`](crate::SingletonLayer).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NftStateLayer<M, I> {
-    /// The NFT metadata. The standard metadata type is [`NftMetadata`](chik_puzzles::nft::NftMetadata).
+    /// The NFT metadata. The standard metadata type is [`NftMetadata`](chik_puzzle_types::nft::NftMetadata).
     pub metadata: M,
     /// The tree hash of the metadata updater puzzle.
     pub metadata_updater_puzzle_hash: Bytes32,

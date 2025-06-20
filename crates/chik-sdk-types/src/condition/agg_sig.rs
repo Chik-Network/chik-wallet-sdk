@@ -1,6 +1,5 @@
 use chik_bls::PublicKey;
-use chik_protocol::{Bytes, Bytes32};
-use chik_sha2::Sha256;
+use chik_protocol::Bytes;
 use klvm_traits::{FromKlvm, ToKlvm};
 
 use super::Condition;
@@ -95,11 +94,4 @@ impl<T> Condition<T> {
                 | Condition::AggSigMe(..)
         )
     }
-}
-
-pub fn announcement_id(coin_info: Bytes32, message: impl AsRef<[u8]>) -> Bytes32 {
-    let mut hasher = Sha256::new();
-    hasher.update(coin_info.as_ref());
-    hasher.update(message.as_ref());
-    Bytes32::from(hasher.finalize())
 }

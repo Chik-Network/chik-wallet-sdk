@@ -1,9 +1,14 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 
-use binky::{Error, Result};
+use bindy::{Error, Result};
 use chik_protocol::{Bytes, Program as SerializedProgram};
-use chik_puzzle_types::nft;
+use chik_puzzle_types::nft::NftMetadata;
 use chik_sdk_driver::SpendContext;
+use klvm_tools_rs::classic::klvm_tools::stages::run;
+use klvm_tools_rs::classic::klvm_tools::stages::stage_0::TRunProgram;
+use klvm_tools_rs::classic::klvm_tools::{
+    binutils::disassemble, stages::stage_2::operators::run_program_for_search_paths,
+};
 use klvm_traits::{FromKlvm, KlvmDecoder, KlvmEncoder};
 use klvm_utils::{tree_hash, TreeHash};
 use klvmr::{
@@ -13,20 +18,39 @@ use klvmr::{
 };
 use num_bigint::BigInt;
 
-use crate::{CurriedProgram, NftMetadata, Output, Pair, Puzzle};
+use crate::{CurriedProgram, Output, Pair, Puzzle};
 
 #[derive(Clone)]
-pub struct Program(pub(crate) Arc<RwLock<SpendContext>>, pub(crate) NodePtr);
+pub struct Program(pub(crate) Arc<Mutex<SpendContext>>, pub(crate) NodePtr);
 
 impl Program {
+    pub fn compile(&self) -> Result<Output> {
+        let mut ctx = self.0.lock().unwrap();
+
+        let invoke = run(&mut ctx);
+        let input = ctx.new_pair(self.1, NodePtr::NIL)?;
+        let run_program = run_program_for_search_paths("program.clsp", &[], false);
+        let output = run_program.run_program(&mut ctx, invoke, input, None)?;
+
+        Ok(Output {
+            value: Program(self.0.clone(), output.1),
+            cost: output.0,
+        })
+    }
+
+    pub fn unparse(&self) -> Result<String> {
+        let ctx = self.0.lock().unwrap();
+        Ok(disassemble(&ctx, self.1, None))
+    }
+
     pub fn serialize(&self) -> Result<SerializedProgram> {
-        let ctx = self.0.read().unwrap();
-        Ok(node_to_bytes(&ctx.allocator, self.1)?.into())
+        let ctx = self.0.lock().unwrap();
+        Ok(node_to_bytes(&ctx, self.1)?.into())
     }
 
     pub fn serialize_with_backrefs(&self) -> Result<SerializedProgram> {
-        let ctx = self.0.read().unwrap();
-        Ok(node_to_bytes_backrefs(&ctx.allocator, self.1)?.into())
+        let ctx = self.0.lock().unwrap();
+        Ok(node_to_bytes_backrefs(&ctx, self.1)?.into())
     }
 
     pub fn run(&self, solution: Self, max_cost: u64, mempool_mode: bool) -> Result<Output> {
@@ -36,10 +60,10 @@ impl Program {
             flags |= MEMPOOL_MODE;
         }
 
-        let mut ctx = self.0.write().unwrap();
+        let mut ctx = self.0.lock().unwrap();
 
         let reduction = run_program(
-            &mut ctx.allocator,
+            &mut ctx,
             &ChikDialect::new(flags),
             self.1,
             solution.1,
@@ -53,12 +77,12 @@ impl Program {
     }
 
     pub fn curry(&self, args: Vec<Program>) -> Result<Program> {
-        let mut ctx = self.0.write().unwrap();
+        let mut ctx = self.0.lock().unwrap();
 
-        let mut args_ptr = ctx.allocator.one();
+        let mut args_ptr = ctx.one();
 
         for arg in args.into_iter().rev() {
-            args_ptr = ctx.allocator.encode_curried_arg(arg.1, args_ptr)?;
+            args_ptr = ctx.encode_curried_arg(arg.1, args_ptr)?;
         }
 
         let ptr = ctx.alloc(&klvm_utils::CurriedProgram {
@@ -70,10 +94,9 @@ impl Program {
     }
 
     pub fn uncurry(&self) -> Result<Option<CurriedProgram>> {
-        let ctx = self.0.read().unwrap();
+        let ctx = self.0.lock().unwrap();
 
-        let Ok(value) =
-            klvm_utils::CurriedProgram::<NodePtr, NodePtr>::from_klvm(&ctx.allocator, self.1)
+        let Ok(value) = klvm_utils::CurriedProgram::<NodePtr, NodePtr>::from_klvm(&ctx, self.1)
         else {
             return Ok(None);
         };
@@ -81,12 +104,12 @@ impl Program {
         let mut args = Vec::new();
         let mut args_ptr = value.args;
 
-        while let Ok((first, rest)) = ctx.allocator.decode_curried_arg(&args_ptr) {
+        while let Ok((first, rest)) = ctx.decode_curried_arg(&args_ptr) {
             args.push(first);
             args_ptr = rest;
         }
 
-        if ctx.allocator.small_number(args_ptr) != Some(1) {
+        if ctx.small_number(args_ptr) != Some(1) {
             return Ok(None);
         }
 
@@ -100,24 +123,39 @@ impl Program {
     }
 
     pub fn tree_hash(&self) -> Result<TreeHash> {
-        let ctx = self.0.read().unwrap();
-        Ok(tree_hash(&ctx.allocator, self.1))
+        let ctx = self.0.lock().unwrap();
+        Ok(tree_hash(&ctx, self.1))
+    }
+
+    pub fn is_atom(&self) -> Result<bool> {
+        let ctx = self.0.lock().unwrap();
+        Ok(matches!(ctx.sexp(self.1), SExp::Atom))
+    }
+
+    pub fn is_pair(&self) -> Result<bool> {
+        let ctx = self.0.lock().unwrap();
+        Ok(matches!(ctx.sexp(self.1), SExp::Pair(..)))
+    }
+
+    pub fn is_null(&self) -> Result<bool> {
+        let ctx = self.0.lock().unwrap();
+        Ok(matches!(ctx.sexp(self.1), SExp::Atom) && ctx.atom_len(self.1) == 0)
     }
 
     pub fn length(&self) -> Result<u32> {
-        let ctx = self.0.read().unwrap();
+        let ctx = self.0.lock().unwrap();
 
-        let SExp::Atom = ctx.allocator.sexp(self.1) else {
+        let SExp::Atom = ctx.sexp(self.1) else {
             return Err(Error::AtomExpected);
         };
 
-        Ok(ctx.allocator.atom_len(self.1) as u32)
+        Ok(ctx.atom_len(self.1) as u32)
     }
 
     pub fn first(&self) -> Result<Program> {
-        let ctx = self.0.read().unwrap();
+        let ctx = self.0.lock().unwrap();
 
-        let SExp::Pair(first, _) = ctx.allocator.sexp(self.1) else {
+        let SExp::Pair(first, _) = ctx.sexp(self.1) else {
             return Err(Error::PairExpected);
         };
 
@@ -125,9 +163,9 @@ impl Program {
     }
 
     pub fn rest(&self) -> Result<Program> {
-        let ctx = self.0.read().unwrap();
+        let ctx = self.0.lock().unwrap();
 
-        let SExp::Pair(_, rest) = ctx.allocator.sexp(self.1) else {
+        let SExp::Pair(_, rest) = ctx.sexp(self.1) else {
             return Err(Error::PairExpected);
         };
 
@@ -136,13 +174,13 @@ impl Program {
 
     // This is called by the individual napi and wasm crates
     pub fn to_small_int(&self) -> Result<Option<f64>> {
-        let ctx = self.0.read().unwrap();
+        let ctx = self.0.lock().unwrap();
 
-        let SExp::Atom = ctx.allocator.sexp(self.1) else {
+        let SExp::Atom = ctx.sexp(self.1) else {
             return Ok(None);
         };
 
-        let number = ctx.allocator.number(self.1);
+        let number = ctx.number(self.1);
 
         if number > BigInt::from(9_007_199_254_740_991i64) {
             return Err(Error::TooLarge);
@@ -157,37 +195,36 @@ impl Program {
         Ok(Some(number as f64))
     }
 
-    // This is called by the individual binding crates
-    pub fn to_big_int(&self) -> Result<Option<BigInt>> {
-        let ctx = self.0.read().unwrap();
+    pub fn to_int(&self) -> Result<Option<BigInt>> {
+        let ctx = self.0.lock().unwrap();
 
-        let SExp::Atom = ctx.allocator.sexp(self.1) else {
+        let SExp::Atom = ctx.sexp(self.1) else {
             return Ok(None);
         };
 
-        Ok(Some(ctx.allocator.number(self.1)))
+        Ok(Some(ctx.number(self.1)))
     }
 
     pub fn to_string(&self) -> Result<Option<String>> {
-        let ctx = self.0.read().unwrap();
+        let ctx = self.0.lock().unwrap();
 
-        let SExp::Atom = ctx.allocator.sexp(self.1) else {
+        let SExp::Atom = ctx.sexp(self.1) else {
             return Ok(None);
         };
 
-        let bytes = ctx.allocator.atom(self.1);
+        let bytes = ctx.atom(self.1);
 
         Ok(Some(String::from_utf8(bytes.to_vec())?))
     }
 
     pub fn to_bool(&self) -> Result<Option<bool>> {
-        let ctx = self.0.read().unwrap();
+        let ctx = self.0.lock().unwrap();
 
-        let SExp::Atom = ctx.allocator.sexp(self.1) else {
+        let SExp::Atom = ctx.sexp(self.1) else {
             return Ok(None);
         };
 
-        let Some(number) = ctx.allocator.small_number(self.1) else {
+        let Some(number) = ctx.small_number(self.1) else {
             return Ok(None);
         };
 
@@ -199,19 +236,19 @@ impl Program {
     }
 
     pub fn to_atom(&self) -> Result<Option<Bytes>> {
-        let ctx = self.0.read().unwrap();
+        let ctx = self.0.lock().unwrap();
 
-        let SExp::Atom = ctx.allocator.sexp(self.1) else {
+        let SExp::Atom = ctx.sexp(self.1) else {
             return Ok(None);
         };
 
-        Ok(Some(ctx.allocator.atom(self.1).to_vec().into()))
+        Ok(Some(ctx.atom(self.1).to_vec().into()))
     }
 
     pub fn to_list(&self) -> Result<Option<Vec<Program>>> {
-        let ctx = self.0.read().unwrap();
+        let ctx = self.0.lock().unwrap();
 
-        let Some(value) = Vec::<NodePtr>::from_klvm(&ctx.allocator, self.1).ok() else {
+        let Some(value) = Vec::<NodePtr>::from_klvm(&ctx, self.1).ok() else {
             return Ok(None);
         };
 
@@ -224,9 +261,9 @@ impl Program {
     }
 
     pub fn to_pair(&self) -> Result<Option<Pair>> {
-        let ctx = self.0.read().unwrap();
+        let ctx = self.0.lock().unwrap();
 
-        let SExp::Pair(first, rest) = ctx.allocator.sexp(self.1) else {
+        let SExp::Pair(first, rest) = ctx.sexp(self.1) else {
             return Ok(None);
         };
 
@@ -237,28 +274,14 @@ impl Program {
     }
 
     pub fn puzzle(&self) -> Result<Puzzle> {
-        let ctx = self.0.read().unwrap();
-        let value = chik_sdk_driver::Puzzle::parse(&ctx.allocator, self.1);
-
-        Ok(match value {
-            chik_sdk_driver::Puzzle::Curried(curried) => Puzzle {
-                puzzle_hash: curried.curried_puzzle_hash.into(),
-                program: Program(self.0.clone(), curried.curried_ptr),
-                mod_hash: curried.mod_hash.into(),
-                args: Some(Program(self.0.clone(), curried.args)),
-            },
-            chik_sdk_driver::Puzzle::Raw(raw) => Puzzle {
-                puzzle_hash: raw.puzzle_hash.into(),
-                program: Program(self.0.clone(), raw.ptr),
-                mod_hash: raw.puzzle_hash.into(),
-                args: None,
-            },
-        })
+        let ctx = self.0.lock().unwrap();
+        let value = chik_sdk_driver::Puzzle::parse(&ctx, self.1);
+        Ok(Puzzle::new(&self.0, value))
     }
 
     pub fn parse_nft_metadata(&self) -> Result<Option<NftMetadata>> {
-        let ctx = self.0.read().unwrap();
-        let value = nft::NftMetadata::from_klvm(&ctx.allocator, self.1);
-        Ok(value.ok().map(Into::into))
+        let ctx = self.0.lock().unwrap();
+        let value = NftMetadata::from_klvm(&**ctx, self.1);
+        Ok(value.ok())
     }
 }

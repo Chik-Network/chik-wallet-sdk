@@ -1,6 +1,6 @@
 [package]
 name = "chik-sdk-bindings"
-version = "0.21.0"
+version = "0.25.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Underlying implementation of chik-wallet-sdk bindings."
@@ -21,18 +21,21 @@ pyo3 = []
 
 [dependencies]
 chik-sdk-utils = { workspace = true }
-chik-sdk-driver = { workspace = true, features = ["experimental-vaults"] }
+chik-sdk-driver = { workspace = true, features = ["offers"] }
+chik-sdk-coinset = { workspace = true, features = ["native-tls"] }
 chik-sdk-test = { workspace = true }
 chik-sdk-types = { workspace = true }
 chik-protocol = { workspace = true }
+chik-consensus = { workspace = true }
 chik-bls = { workspace = true }
 chik-secp = { workspace = true }
 chik-puzzle-types = { workspace = true }
 chik-puzzles = { workspace = true }
 klvm-utils = { workspace = true }
 klvm-traits = { workspace = true }
+chik-traits = { workspace = true }
 klvmr = { workspace = true }
-binky = { workspace = true }
+bindy = { workspace = true }
 bip39 = { workspace = true }
 hex = { workspace = true }
 sha2 = { workspace = true }
@@ -40,3 +43,4 @@ rand = { workspace = true }
 rand_chacha = { workspace = true }
 num-bigint = { workspace = true }
 paste = { workspace = true }
+klvm_tools_rs = { workspace = true }

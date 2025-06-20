@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use chik_protocol::Bytes32;
 use chik_sdk_types::{
-    MerkleTree, Mod, MofNArgs, MofNSolution, NofNArgs, NofNSolution, OneOfNArgs, OneOfNSolution,
+    puzzles::{MofNArgs, MofNSolution, NofNArgs, NofNSolution, OneOfNArgs, OneOfNSolution},
+    MerkleTree, Mod,
 };
 use klvm_traits::klvm_tuple;
 use klvm_utils::{tree_hash_atom, tree_hash_pair, TreeHash};
